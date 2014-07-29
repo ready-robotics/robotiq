@@ -38,7 +38,7 @@ class CModelControl():
     if req.state == True:
         if self.open_state_ == True:
             rospy.logwarn('Already Open')
-            return 'ALREADY OPEN'
+            return 'FAILURE: ALREADY OPEN'
         else:
             self.open_state_ = True
             self.close_state_ = False
@@ -46,7 +46,7 @@ class CModelControl():
     else:
         if self.close_state_ == True:
             rospy.logwarn('Already Open')
-            return 'ALREADY OPEN'
+            return 'FAILURE: ALREADY CLOSED'
         else:
             self.close_state_ = True
             self.open_state_ = False
