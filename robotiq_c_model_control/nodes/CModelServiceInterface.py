@@ -15,74 +15,82 @@ from robotiq_c_model_control.srv import *
 
 class CModelControl():
 
-  def __init__(self):
-    rospy.init_node('c_gripper_control',anonymous=True)
+    def __init__(self):
+        rospy.init_node('c_gripper_control',anonymous=True)
 
-    self.open_state_ = False
-    self.close_state_ = False
+        self.open_state_ = False
+        self.close_state_ = False
 
-    self.gripper_cmd_pub = rospy.Publisher("gripper_command",commandMsg.CModel_gripper_command)
-    self.gripper_state_sub = rospy.Subscriber('gripper_state',stateMsg.CModel_gripper_state,self.gripper_state_cb)
-    # self.open_button_sub = rospy.Subscriber("open",Bool, self.open_cb)
-    # self.close_button_sub = rospy.Subscriber("close",Bool, self.close_cb)
-    # self.toggle_sub = rospy.Subscriber("toggle",Bool, self.toggle_cb)
+        self.gripper_cmd_pub = rospy.Publisher("gripper_command",commandMsg.CModel_gripper_command)
+        self.gripper_state_sub = rospy.Subscriber('gripper_state',stateMsg.CModel_gripper_state,self.gripper_state_cb)
+        # self.open_button_sub = rospy.Subscriber("open",Bool, self.open_cb)
+        # self.close_button_sub = rospy.Subscriber("close",Bool, self.close_cb)
+        # self.toggle_sub = rospy.Subscriber("toggle",Bool, self.toggle_cb)
 
-    self.open_service = rospy.Service("/robotiq_c_model_control/Open",Open,self.service_open)
-    rospy.logwarn('C-Model Gripper Service Layer: Interfaces Initialized')
-    
-    self.last_gripper_state = None
+        self.open_service = rospy.Service("/robotiq_c_model_control/Open",Open,self.service_open)
+        rospy.logwarn('C-Model Gripper Service Layer: Interfaces Initialized')
+        
+        self.last_gripper_state = None
+        self.state = 'RESET'
 
-    while not rospy.is_shutdown():
-        self.update()
-        rospy.sleep(.01)
-        pass
+        while not rospy.is_shutdown():
+            self.update()
+            rospy.sleep(.01)
+            pass
 
-  def gripper_state_cb(self,msg):
-    self.last_gripper_state = msg
+    def gripper_state_cb(self,msg):
+        self.last_gripper_state = msg
 
-  def service_open(self,req):
-    if req.wait == True:
-        if req.state == True: # Open Gripper
-            self.open()
-            while not self.last_gripper_state.in_motion:
-                rospy.sleep(.01)
-            while self.last_gripper_state.in_motion:
-                rospy.sleep(.01)
-            return 'DONE'
-        else: # Close Gripper
-            self.close()
-            while not self.last_gripper_state.in_motion:
-                rospy.sleep(.01)
-            while self.last_gripper_state.in_motion:
-                rospy.sleep(.01)
-            return 'DONE'
-            # tries = 0
-            # done = False
-            # while not done:
-            #     if tries > 2: break
-            #     s = self.last_gripper_state.current_pos
-            #     if not self.last_gripper_state.in_motion:
-            #         self.open()
-            #         rospy.sleep(.05)
-            #         self.close()
-            #         rospy.sleep(.1)
-            #         tries+=1
-    else:
-        pass
+    def service_open(self,req):
+        if req.wait == True:
+            if req.state == True: # Open Gripper
+                if not self.state == 'OPEN':
+                    self.open()
+                    while not self.last_gripper_state.in_motion:
+                        rospy.sleep(.01)
+                    while self.last_gripper_state.in_motion:
+                        rospy.sleep(.01)
+                    return 'DONE - OPEN'
+                else:
+                    return 'FAILED - ALREADY OPEN'
+            else: # Close Gripper
+                if not self.state == 'CLOSED':
+                    self.close()
+                    while not self.last_gripper_state.in_motion:
+                        rospy.sleep(.01)
+                    while self.last_gripper_state.in_motion:
+                        rospy.sleep(.01)
+                    return 'DONE - CLOSED'
+                else:
+                    return 'FAILED - ALREADY CLOSED'
+        else:
+            if req.state == True: # Open Gripper
+                if not self.state == 'OPEN':
+                    self.open()
+                    return 'DONE - OPEN'
+                else:
+                    return 'FAILED - ALREADY OPEN'
+            else: # Close Gripper
+                if not self.state == 'CLOSED':
+                    self.close()
+                    return 'DONE - CLOSED'
+                else:
+                    return 'FAILED - ALREADY CLOSED'
 
-  def open(self):
-    bmsg = commandMsg.CModel_gripper_command()
-    bmsg.reset = False
-    bmsg.activate = True
-    bmsg.open = True
-    bmsg.close = False
-    bmsg.release = False
-    bmsg.request_pos = 0
-    bmsg.speed = 255
-    bmsg.force = 255
-    self.gripper_cmd_pub.publish(bmsg)
+    def open(self):
+        bmsg = commandMsg.CModel_gripper_command()
+        bmsg.reset = False
+        bmsg.activate = True
+        bmsg.open = True
+        bmsg.close = False
+        bmsg.release = False
+        bmsg.request_pos = 0
+        bmsg.speed = 255
+        bmsg.force = 255
+        self.gripper_cmd_pub.publish(bmsg)
+        self.state = 'OPEN'
 
-  def close(self):
+    def close(self):
         bmsg = commandMsg.CModel_gripper_command()
         bmsg.reset = False
         bmsg.activate = True
@@ -93,60 +101,27 @@ class CModelControl():
         bmsg.speed = 255
         bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
+        self.state = 'CLOSED'
 
-
-  # def open_cb(self,msg):
-  #   self.open_state_ = msg.data
-  #   if self.open_state_ == True:
-  #       self.close_state_ = False
-  #   pass
-
-  # def close_cb(self,msg):
-  #   self.close_state_ = msg.data
-  #   if self.close_state_ == True:
-  #       self.open_state_ = False
-  #   pass
-
-  # def toggle_cb(self,msg):
-  #   if msg.data == True: # pressed but not released
-  #       if self.open_state_ == False and self.close_state_ == False:
-  #           self.open_state_ = True
-  #           self.close_state_ = False
-  #       elif self.open_state_ == True and self.close_state_ == False:
-  #           self.open_state_ = False
-  #           self.close_state_ = True
-  #       elif self.open_state_ == False and self.close_state_ == True:
-  #           self.open_state_ = True
-  #           self.close_state_ = False
-
-  def update(self):
-    # print 'open: ' + str(self.open_state_) + ' -- close: ' + str(self.close_state_)
-    pass
-    # bmsg = commandMsg.CModel_gripper_command()
-
-    # if self.open_state_ == True and self.close_state_ == False:
-    #     bmsg.reset = False
-    #     bmsg.activate = True
-    #     bmsg.open = True
-    #     bmsg.close = False
-    #     bmsg.release = False
-    #     bmsg.request_pos = 0
-    #     bmsg.speed = 255
-    #     bmsg.force = 255
-    #     self.gripper_cmd_pub.publish(bmsg)
-    # elif self.open_state_ == False and self.close_state_ == True:
-    #     bmsg.reset = False
-    #     bmsg.activate = True
-    #     bmsg.open = False
-    #     bmsg.close = True
-    #     bmsg.release = False
-    #     bmsg.request_pos = 0
-    #     bmsg.speed = 255
-    #     bmsg.force = 255
-    #     self.gripper_cmd_pub.publish(bmsg)
-    # pass
-
-
-
+    def update(self):
+        pass
 if __name__ == '__main__':
   device = CModelControl()
+
+
+# fault: 0
+# reset: True
+# standby: True
+# object: False
+# init: False
+# activating: False
+# status: 0
+# at_requested_pos: False
+# in_motion: True
+# open_contact: False
+# closed_contact: False
+# current_pos: 13
+# requested_pos: 0
+# current: 0
+# force: 0
+# speed: 0
