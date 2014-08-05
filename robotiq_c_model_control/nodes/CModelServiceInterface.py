@@ -44,9 +44,9 @@ class CModelControl():
                 if not self.state == 'OPEN':
                     self.open()
                     while not self.last_gripper_state.in_motion:
-                        rospy.sleep(.01)
+                        rospy.sleep(.005)
                     while self.last_gripper_state.in_motion:
-                        rospy.sleep(.01)
+                        rospy.sleep(.005)
                     return 'DONE - OPEN'
                 else:
                     return 'FAILED - ALREADY OPEN'
@@ -54,9 +54,9 @@ class CModelControl():
                 if not self.state == 'CLOSED':
                     self.close()
                     while not self.last_gripper_state.in_motion:
-                        rospy.sleep(.01)
+                        rospy.sleep(.005)
                     while self.last_gripper_state.in_motion:
-                        rospy.sleep(.01)
+                        rospy.sleep(.005)
                     return 'DONE - CLOSED'
                 else:
                     return 'FAILED - ALREADY CLOSED'
