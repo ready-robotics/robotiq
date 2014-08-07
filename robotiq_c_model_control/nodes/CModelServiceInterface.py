@@ -23,9 +23,6 @@ class CModelControl():
 
         self.gripper_cmd_pub = rospy.Publisher("gripper_command",commandMsg.CModel_gripper_command)
         self.gripper_state_sub = rospy.Subscriber('gripper_state',stateMsg.CModel_gripper_state,self.gripper_state_cb)
-        # self.open_button_sub = rospy.Subscriber("open",Bool, self.open_cb)
-        # self.close_button_sub = rospy.Subscriber("close",Bool, self.close_cb)
-        # self.toggle_sub = rospy.Subscriber("toggle",Bool, self.toggle_cb)
 
         self.open_service = rospy.Service("/robotiq_c_model_control/Open",Open,self.service_open)
         rospy.logwarn('C-Model Gripper Service Layer: Interfaces Initialized')
