@@ -6,7 +6,7 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Vector3
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 
 from robotiq_c_model_control.msg import _CModel_gripper_command  as commandMsg
 from robotiq_c_model_control.msg import _CModel_gripper_state  as stateMsg
@@ -26,17 +26,28 @@ class CModelControl():
 
         self.open_service = rospy.Service("/robotiq_c_model_control/Open",Open,self.service_open)
         rospy.logwarn('C-Model Gripper Service Layer: Interfaces Initialized')
+
+        self.state_pub = rospy.Publisher("/gripper_state",String)
         
         self.last_gripper_state = None
         self.state = 'RESET'
+        self.reported_state = 'RESET'
+        self.initialized = False
 
         while not rospy.is_shutdown():
             self.update()
+            self.state_pub.publish(self.reported_state)
             rospy.sleep(.01)
             pass
 
     def gripper_state_cb(self,msg):
         self.last_gripper_state = msg
+
+        if not self.initialized:
+            # Initialize and Open
+            self.open()
+            self.reported_state = 'OPEN'
+            self.initialized = True
 
     def service_open(self,req):
         if req.wait == True:
@@ -48,7 +59,9 @@ class CModelControl():
                         rospy.sleep(.1)
                     while self.last_gripper_state.in_motion:
                         rospy.loginfo('in motion')
+                        self.reported_state = 'OPENING'
                         rospy.sleep(.1)
+                    self.reported_state = 'OPEN'
                     return 'DONE - OPEN'
                 else:
                     return 'FAILED - ALREADY OPEN'
@@ -60,7 +73,9 @@ class CModelControl():
                         rospy.sleep(.1)
                     while self.last_gripper_state.in_motion:
                         rospy.loginfo('in motion')
+                        self.reported_state = 'CLOSING'
                         rospy.sleep(.1)
+                    self.reported_state = 'CLOSED'
                     return 'DONE - CLOSED'
                 else:
                     return 'FAILED - ALREADY CLOSED'
@@ -90,6 +105,7 @@ class CModelControl():
         bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'OPEN'
+        self.reported_state = 'OPEN'
 
     def close(self):
         bmsg = commandMsg.CModel_gripper_command()
@@ -103,6 +119,7 @@ class CModelControl():
         bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'CLOSED'
+        self.reported_state = 'CLOSED'
 
     def update(self):
         pass
