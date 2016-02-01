@@ -1,7 +1,7 @@
 # http://ros.org/doc/groovy/api/catkin/html/user_guide/supposed.html
 cmake_minimum_required(VERSION 2.8.3)
 project(robotiq_c_model_control)
-find_package(catkin REQUIRED COMPONENTS rospy message_generation)
+find_package(catkin REQUIRED COMPONENTS rospy message_generation std_msgs)
 
 
 #set the default path for built executables to the "bin" directory
@@ -12,15 +12,23 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 ###################################
 ## catkin message generation     ##
 ###################################
+add_service_files(
+  FILES
+  Open.srv
+)
+
 add_message_files(
   FILES
   CModel_robot_input.msg
   CModel_robot_output.msg
+  CModel_gripper_command.msg
+  CModel_gripper_state.msg
 )
 
 catkin_python_setup()
 
-generate_messages()
+generate_messages(
+	DEPENDENCIES std_msgs)
 
 ###################################
 ## catkin specific configuration ##
@@ -43,4 +51,3 @@ catkin_package(
 
 install(PROGRAMS nodes/CModelSimpleController.py nodes/CModelStatusListener.py 
     nodes/CModelTcpNode.py nodes/CModelRtuNode.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-
