@@ -45,13 +45,14 @@
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "geometry_msgs/WrenchStamped.h"
 #include "robotiq_force_torque_sensor/rq_sensor_state.h"
-#include "robotiq_force_torque_sensor/rq_sensor_com.h"
 #include "robotiq_force_torque_sensor/ft_sensor.h"
 #include "robotiq_force_torque_sensor/sensor_accessor.h"
 
 static void decode_message_and_do(INT_8 const  * const buff, INT_8 * const ret);
 static void wait_for_other_connection(void);
+static int max_retries_(100);
 
 ros::Publisher sensor_pub_acc;
 
@@ -106,16 +107,18 @@ static void wait_for_other_connection(void)
 {
 	INT_8 ret;
 
-	while(1)
-	{	
-		ROS_WARN("Waiting for Connection.");
+	while(ros::ok())
+	{
+		ROS_INFO("Waiting for sensor connection...");
 		usleep(1000000);//Attend 1 seconde.
-		ret = rq_sensor_state();
 
+		ret = rq_sensor_state(max_retries_);
 		if(ret == 0)
 		{
+			ROS_INFO("Sensor connected!");
 			break;
 		}
+
 		ros::spinOnce();
 	}
 }
@@ -142,65 +145,74 @@ static robotiq_force_torque_sensor::ft_sensor get_data(void)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "robotiq_force_torque_sensor");
+	ros::NodeHandle n;
+	ros::param::param<int>("~max_retries", max_retries_, 100);
 
 	INT_8 bufStream[512];
 	robotiq_force_torque_sensor::ft_sensor msgStream;
-	ros::NodeHandle n;
 	INT_8 ret; 
 
-
 	//If we can't initialize, we return an error
-	ROS_WARN("Attempting to Initialize");
-	ret = rq_sensor_state();
+	ret = rq_sensor_state(max_retries_);
 	if(ret == -1)
 	{
 		wait_for_other_connection();
 	}
 
 	//Reads basic info on the sensor
-	ROS_WARN("Reading Sensor State");
-	ret = rq_sensor_state();
+	ret = rq_sensor_state(max_retries_);
 	if(ret == -1)
 	{
 		wait_for_other_connection();
 	}
 
 	//Starts the stream
-	ret = rq_sensor_state();
-	ROS_WARN("Starting Sensor Stream");
+	ret = rq_sensor_state(max_retries_);
 	if(ret == -1)
 	{
 		wait_for_other_connection();
 	}
 	
 	ros::Publisher sensor_pub = n.advertise<robotiq_force_torque_sensor::ft_sensor>("robotiq_force_torque_sensor", 512);
+	ros::Publisher wrench_pub = n.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
 	ros::ServiceServer service = n.advertiseService("robotiq_force_torque_sensor_acc", receiverCallback);
 
 	//std_msgs::String msg;
+	geometry_msgs::WrenchStamped wrenchMsg;
+	ros::param::param<std::string>("~frame_id", wrenchMsg.header.frame_id, "robotiq_force_torque_frame_id");
 
+	ROS_INFO("Starting Sensor");
 	while(ros::ok())
 	{
- 		ret = rq_sensor_state();
+		ret = rq_sensor_state(max_retries_);
 
- 		if(ret == -1)
+		if(ret == -1)
 		{
-			ROS_WARN("Waiting for Connections");
- 			wait_for_other_connection();
- 		}
+			wait_for_other_connection();
+		}
 
- 		if(rq_sensor_get_current_state() == RQ_STATE_RUN)
+		if(rq_sensor_get_current_state() == RQ_STATE_RUN)
 		{
- 			strcpy(bufStream,"");
+			strcpy(bufStream,"");
 			msgStream = get_data();
 
 			if(rq_state_got_new_message())
 			{
 				sensor_pub.publish(msgStream);
+
+				//compose WrenchStamped Msg
+				wrenchMsg.header.stamp = ros::Time::now();
+				wrenchMsg.wrench.force.x = msgStream.Fx;
+				wrenchMsg.wrench.force.y = msgStream.Fy;
+				wrenchMsg.wrench.force.z = msgStream.Fz;
+				wrenchMsg.wrench.torque.x = msgStream.Mx;
+				wrenchMsg.wrench.torque.y = msgStream.My;
+				wrenchMsg.wrench.torque.z = msgStream.Mz;
+				wrench_pub.publish(wrenchMsg);
 			}
- 		}
+		}
 
 		ros::spinOnce();
- 	}
- 	stop_connection();
- 	return 0;
+	}
+	return 0;
 }
