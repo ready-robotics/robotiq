@@ -113,7 +113,7 @@ class gripper_control():
             # Initialize and Activate
             if command_msg.activate is True:
                 output.rACT = 1
-                output.rGTO = 0
+                output.rGTO = 1
             # Keep activated for action
             else:
                 output.rACT = 1

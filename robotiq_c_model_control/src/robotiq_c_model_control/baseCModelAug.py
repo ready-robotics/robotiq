@@ -77,52 +77,52 @@ class robotiqBaseCModelAug:
         command.rFR = max(0, command.rFR)
         command.rFR = min(255, command.rFR)
 
-    # Return the modified command
-    return command
+        # Return the modified command
+        return command
 
 
-def refreshCommand(self, command):
-    """Function to update the command which will be sent during the next sendCommand() call."""
+    def refreshCommand(self, command):
+        """Function to update the command which will be sent during the next sendCommand() call."""
 
-    # Limit the value of each variable
-    command = self.verifyCommand(command)
+        # Limit the value of each variable
+        command = self.verifyCommand(command)
 
-    # Initiate command as an empty list
-    self.message = []
+        # Initiate command as an empty list
+        self.message = []
 
-    # Build the command with each output variable
-    # To-Do: add verification that all variables are in their authorized range
-    self.message.append(command.rACT + (command.rGTO << 3) + (command.rATR << 4))
-    self.message.append(command.rADR)
-    self.message.append(0)
-    self.message.append(command.rPR)
-    self.message.append(command.rSP)
-    self.message.append(command.rFR)
-
-
-def sendCommand(self):
-    """Send the command to the Gripper."""
-
-    self.client.sendCommand(self.message)
+        # Build the command with each output variable
+        # To-Do: add verification that all variables are in their authorized range
+        self.message.append(command.rACT + (command.rGTO << 3) + (command.rATR << 4))
+        self.message.append(command.rADR)
+        self.message.append(0)
+        self.message.append(command.rPR)
+        self.message.append(command.rSP)
+        self.message.append(command.rFR)
 
 
-def getStatus(self):
-    """Request the status from the gripper and return it in the CModel_robot_input msg type."""
+    def sendCommand(self):
+        """Send the command to the Gripper."""
 
-    # Acquire status from the Gripper
-    status = self.client.getStatus(6)
+        self.client.sendCommand(self.message)
 
-    # Message to output
-    message = inputMsg.CModel_robot_input()
 
-    # Assign the values to their respective variables
-    message.gACT = (status[0] >> 0) & 0x01
-    message.gGTO = (status[0] >> 3) & 0x01
-    message.gSTA = (status[0] >> 4) & 0x03
-    message.gOBJ = (status[0] >> 6) & 0x03
-    message.gFLT = status[2]
-    message.gPR = status[3]
-    message.gPO = status[4]
-    message.gCU = status[5]
+    def getStatus(self):
+        """Request the status from the gripper and return it in the CModel_robot_input msg type."""
 
-    return message
+        # Acquire status from the Gripper
+        status = self.client.getStatus(6)
+
+        # Message to output
+        message = inputMsg.CModel_robot_input()
+
+        # Assign the values to their respective variables
+        message.gACT = (status[0] >> 0) & 0x01
+        message.gGTO = (status[0] >> 3) & 0x01
+        message.gSTA = (status[0] >> 4) & 0x03
+        message.gOBJ = (status[0] >> 6) & 0x03
+        message.gFLT = status[2]
+        message.gPR = status[3]
+        message.gPO = status[4]
+        message.gCU = status[5]
+
+        return message

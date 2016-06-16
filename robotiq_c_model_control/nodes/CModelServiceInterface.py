@@ -44,11 +44,14 @@ class CModelControl():
             self.reset()
             self.initialized = False
             msg.status = 0
+	    rospy.sleep(0.25)
 
-        if not self.initialized and msg.status != 3:
+        if not self.initialized:  # or msg.status != 3:
             # Initialize and Open
             self.initialize()
+	    rospy.sleep(0.5)
             self.open()
+            rospy.sleep(0.5)
             self.reported_state = 'OPEN'
             self.initialized = True
 
@@ -121,7 +124,7 @@ class CModelControl():
         bmsg.speed = 255
         bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
-        self.state = 'RESETTING'
+        self.state = 'OPEN'
         self.reported_state = 'RESETTING'
 
     def initialize(self):
@@ -135,7 +138,7 @@ class CModelControl():
         bmsg.speed = 255
         bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
-        self.state = 'INITIALIZING'
+        self.state = 'OPEN'
         self.reported_state = 'INITIALIZING'
 
     def close(self):
