@@ -1,0 +1,7 @@
+<launch>
+    <group ns="/robotiq_c_model_gripper">
+        <node pkg="robotiq_c_model_control" type="CModelTcpNode.py" name="c_model_tcp_node" args="192.168.1.11"/>
+        <node pkg="robotiq_c_model_control" type="CModelSimpleCommandLayer.py" name="gripper_command_layer"/>
+        <node pkg="robotiq_c_model_control" type="CModelServiceInterface.py" name="gripper_service_interface"/>
+    </group>
+</launch>

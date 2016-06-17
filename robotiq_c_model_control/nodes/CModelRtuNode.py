@@ -41,7 +41,9 @@ ROS node for controling a Robotiq C-Model gripper using the Modbus RTU protocol.
 The script takes as an argument the IP address of the gripper. It initializes a baseCModel object and adds a comModbusTcp client to it. It then loops forever, reading the gripper status and updating its command. The gripper status is published on the 'CModelRobotInput' topic using the 'CModel_robot_input' msg type. The node subscribes to the 'CModelRobotOutput' topic for new commands using the 'CModel_robot_output' msg type. Examples are provided to control the gripper (CModelSimpleController.py) and interpreting its status (CModelStatusListener.py).
 """
 
-import roslib; roslib.load_manifest('robotiq_c_model_control')
+import roslib;
+
+roslib.load_manifest('robotiq_c_model_control')
 roslib.load_manifest('robotiq_modbus_rtu')
 import rospy
 import robotiq_c_model_control.baseCModel
@@ -50,41 +52,42 @@ import os, sys
 from robotiq_c_model_control.msg import _CModel_robot_input  as inputMsg
 from robotiq_c_model_control.msg import _CModel_robot_output as outputMsg
 
+
 def mainLoop(device):
-    
-    #Gripper is a C-Model with a TCP connection
+    # Gripper is a C-Model with a TCP connection
     gripper = robotiq_c_model_control.baseCModel.robotiqBaseCModel()
     gripper.client = robotiq_modbus_rtu.comModbusRtu.communication()
 
-    #We connect to the address received as an argument
+    # We connect to the address received as an argument
     gripper.client.connectToDevice(device)
 
     rospy.init_node('robotiqCModel')
 
-    #The Gripper status is published on the topic named 'CModelRobotInput'
+    # The Gripper status is published on the topic named 'CModelRobotInput'
     pub = rospy.Publisher('CModelRobotInput', inputMsg.CModel_robot_input)
 
-    #The Gripper command is received from the topic named 'CModelRobotOutput'
-    rospy.Subscriber('CModelRobotOutput', outputMsg.CModel_robot_output, gripper.refreshCommand)    
-    
+    # The Gripper command is received from the topic named 'CModelRobotOutput'
+    rospy.Subscriber('CModelRobotOutput', outputMsg.CModel_robot_output, gripper.refreshCommand)
 
-    #We loop
+    # We loop
     while not rospy.is_shutdown():
 
-      #Get and publish the Gripper status
-      status = gripper.getStatus()
-      pub.publish(status)     
+        # Get and publish the Gripper status
+        status = gripper.getStatus()
+        pub.publish(status)
 
-      #Wait a little
-      #rospy.sleep(0.05)
+        # Wait a little
+        # rospy.sleep(0.05)
 
-      #Send the most recent command
-      gripper.sendCommand()
+        # Send the most recent command
+        gripper.sendCommand()
 
-      #Wait a little
-      #rospy.sleep(0.05)
-            
+    # Wait a little
+    # rospy.sleep(0.05)
+
+
 if __name__ == '__main__':
     try:
         mainLoop(sys.argv[1])
-    except rospy.ROSInterruptException: pass
+    except rospy.ROSInterruptException:
+        pass
