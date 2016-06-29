@@ -60,7 +60,7 @@ class CModelControl():
             if req.state is True:  # Open Gripper
                 if not self.state == 'OPEN':
                     self.open()
-                    while not self.last_gripper_state.in_motion:
+                    while not self.last_gripper_state.in_motion and self.last_gripper_state.at_requested_pos:
                         rospy.loginfo('waiting for motion')
                         rospy.sleep(.1)
                     while self.last_gripper_state.in_motion:
@@ -74,7 +74,7 @@ class CModelControl():
             else:  # Close Gripper
                 if not self.state == 'CLOSED':
                     self.close()
-                    while not self.last_gripper_state.in_motion:
+                    while not self.last_gripper_state.in_motion and self.last_gripper_state.at_requested_pos:
                         rospy.loginfo('waiting for motion')
                         rospy.sleep(.1)
                     while self.last_gripper_state.in_motion:
