@@ -70,7 +70,7 @@ class CModelControl():
                     self.reported_state = 'OPEN'
                     return 'DONE - OPEN'
                 else:
-                    return 'FAILED - ALREADY OPEN'
+                    return 'SUCCEEDED - ALREADY OPEN'
             else:  # Close Gripper
                 if not self.state == 'CLOSED':
                     self.close()
@@ -84,20 +84,20 @@ class CModelControl():
                     self.reported_state = 'CLOSED'
                     return 'DONE - CLOSED'
                 else:
-                    return 'FAILED - ALREADY CLOSED'
+                    return 'SUCCEEDED - ALREADY CLOSED'
         else:
             if req.state is True:  # Open Gripper
                 if not self.state == 'OPEN':
                     self.open()
                     return 'DONE - OPEN'
                 else:
-                    return 'FAILED - ALREADY OPEN'
+                    return 'SUCCEEDED - ALREADY OPEN'
             else:  # Close Gripper
                 if not self.state == 'CLOSED':
                     self.close()
                     return 'DONE - CLOSED'
                 else:
-                    return 'FAILED - ALREADY CLOSED'
+                    return 'SUCCEEDED - ALREADY CLOSED'
 
     def open(self):
         bmsg = commandMsg.CModel_gripper_command()
