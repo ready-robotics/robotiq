@@ -47,15 +47,14 @@ Examples are provided to control the gripper (CModelSimpleController.py) and int
 """
 
 import roslib
-
-roslib.load_manifest('robotiq_c_model_control')
-roslib.load_manifest('robotiq_modbus_rtu')
 import rospy
 import robotiq_c_model_control.baseCModelAug
 import robotiq_modbus_rtu.comModbusRtu
-import os, sys
 from robotiq_c_model_control.msg import _CModel_robot_input  as inputMsg
 from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
+
+roslib.load_manifest('robotiq_c_model_control')
+roslib.load_manifest('robotiq_modbus_rtu')
 
 
 def mainLoop(device):
@@ -92,7 +91,12 @@ def mainLoop(device):
 
 
 if __name__ == '__main__':
-    try:
-        mainLoop(sys.argv[1])
-    except rospy.ROSInterruptException:
-        pass
+    flag = False
+    port = ['/dev/ttyUSB0', '/dev/ttyUSB1']
+    for p in port:
+        if not flag:
+            try:
+                mainLoop(p)
+                flag = True
+            except rospy.ROSInterruptException:
+                flag = False
