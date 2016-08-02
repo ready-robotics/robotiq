@@ -48,6 +48,7 @@ Examples are provided to control the gripper (CModelSimpleController.py) and int
 
 import roslib
 import rospy
+import sys
 import robotiq_c_model_control.baseCModelAug
 import robotiq_modbus_rtu.comModbusRtu
 from robotiq_c_model_control.msg import _CModel_robot_input  as inputMsg
@@ -63,7 +64,12 @@ def mainLoop(device):
     gripper.client = robotiq_modbus_rtu.comModbusRtu.communication()
 
     # We connect to the address received as an argument
-    gripper.client.connectToDevice(device)
+    try:
+        gripper.client.connectToDevice(device)
+    except Exception as e:
+        rospy.logwarn("Cannot connect to gripper on this port: {}".format(e))
+        raise
+        return
 
     rospy.init_node('robotiqCModel')
 
@@ -77,7 +83,12 @@ def mainLoop(device):
     while not rospy.is_shutdown():
 
         # Get and publish the Gripper status
-        status = gripper.getStatus()
+        try:
+            status = gripper.getStatus()
+        except AttributeError as ae:
+            rospy.logwarn("Tried to connect to the wrong port: {}".format(ae))
+            raise
+            return
         pub.publish(status)
 
         # Wait a little
@@ -92,11 +103,13 @@ def mainLoop(device):
 
 if __name__ == '__main__':
     flag = False
-    port = ['/dev/ttyUSB0', '/dev/ttyUSB1']
-    for p in port:
+    g_port = ['/dev/ttyUSB0', '/dev/ttyUSB1']
+    for p in g_port:
         if not flag:
             try:
                 mainLoop(p)
                 flag = True
             except rospy.ROSInterruptException:
+                flag = False
+            except Exception:
                 flag = False
