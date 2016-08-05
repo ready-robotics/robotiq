@@ -15,8 +15,8 @@ class gripper_control():
         self.commands_saved_ = False
         rospy.init_node('c_model_command_layer', anonymous=True)
         # Adjutant Feed Publishers
-        self.output_pub = rospy.Publisher("CModelRobotOutput", outputMsg.CModel_augmented_robot_output)
-        self.state_pub = rospy.Publisher("gripper_state", stateMsg.CModel_gripper_state)
+        self.output_pub = rospy.Publisher("CModelRobotOutput", outputMsg.CModel_augmented_robot_output, queue_size=1)
+        self.state_pub = rospy.Publisher("gripper_state", stateMsg.CModel_gripper_state, queue_size=1)
         # Adjutant Raw Device Subscribers
         self.input_sub = rospy.Subscriber("CModelRobotInput", inputMsg.CModel_robot_input, self.input_cb)
         self.command_sub = rospy.Subscriber("gripper_command", commandMsg.CModel_gripper_command, self.command_cb)

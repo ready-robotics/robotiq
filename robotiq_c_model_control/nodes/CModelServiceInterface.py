@@ -18,14 +18,14 @@ class CModelControl():
         self.open_state_ = False
         self.close_state_ = False
 
-        self.gripper_cmd_pub = rospy.Publisher("gripper_command", commandMsg.CModel_gripper_command)
+        self.gripper_cmd_pub = rospy.Publisher("gripper_command", commandMsg.CModel_gripper_command, queue_size=1)
         self.gripper_state_sub = rospy.Subscriber('gripper_state', stateMsg.CModel_gripper_state, self.gripper_state_cb,
                                                   queue_size=1)
 
         self.open_service = rospy.Service("/robotiq_c_model_control/Open", Open, self.service_open)
         rospy.logwarn('C-Model Gripper Service Layer: Interfaces Initialized')
 
-        self.state_pub = rospy.Publisher("/gripper_state", String)
+        self.state_pub = rospy.Publisher("/gripper_state", String, queue_size=1)
         
         self.last_gripper_state = None
         self.state = 'RESET'
@@ -33,7 +33,6 @@ class CModelControl():
         self.initialized = False
 
         while not rospy.is_shutdown():
-            self.update()
             self.state_pub.publish(self.reported_state)
             rospy.sleep(.01)
             pass
@@ -67,6 +66,7 @@ class CModelControl():
                         rospy.loginfo('in motion')
                         self.reported_state = 'OPENING'
                         rospy.sleep(.1)
+		    # rospy.sleep(0.25)
                     self.reported_state = 'OPEN'
                     return 'DONE - OPEN'
                 else:
@@ -81,6 +81,7 @@ class CModelControl():
                         rospy.loginfo('in motion')
                         self.reported_state = 'CLOSING'
                         rospy.sleep(.1)
+		    # rospy.sleep(0.25)
                     self.reported_state = 'CLOSED'
                     return 'DONE - CLOSED'
                 else:
@@ -108,10 +109,10 @@ class CModelControl():
         bmsg.release = False
         bmsg.request_pos = 0
         bmsg.speed = 255
-        bmsg.force = 255
+        bmsg.force = 0  # 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'OPEN'
-        self.reported_state = 'OPEN'
+        self.reported_state = 'OPENING'
 
     def reset(self):
         bmsg = commandMsg.CModel_gripper_command()
@@ -122,7 +123,7 @@ class CModelControl():
         bmsg.release = False
         bmsg.request_pos = 0
         bmsg.speed = 255
-        bmsg.force = 255
+        bmsg.force = 0  # 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'OPEN'
         self.reported_state = 'RESETTING'
@@ -136,7 +137,7 @@ class CModelControl():
         bmsg.release = False
         bmsg.request_pos = 0
         bmsg.speed = 255
-        bmsg.force = 255
+        bmsg.force = 0  # 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'OPEN'
         self.reported_state = 'INITIALIZING'
@@ -150,13 +151,11 @@ class CModelControl():
         bmsg.release = False
         bmsg.request_pos = 0
         bmsg.speed = 255
-        bmsg.force = 255
+        bmsg.force = 0  # 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'CLOSED'
-        self.reported_state = 'CLOSED'
+        self.reported_state = 'CLOSING'
 
-    def update(self):
-        pass
 if __name__ == '__main__':
     device = CModelControl()
 

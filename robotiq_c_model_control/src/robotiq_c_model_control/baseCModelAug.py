@@ -49,7 +49,8 @@ class robotiqBaseCModelAug:
     def __init__(self):
         # Initiate output message as an empty list
         self.message = []
-
+        self.last_message = [0, 0, 0, 0, 0, 0]
+  
         # Note: after the instantiation, a ".client" member must be added to the object
 
     def verifyCommand(self, command):
@@ -102,8 +103,9 @@ class robotiqBaseCModelAug:
 
     def sendCommand(self):
         """Send the command to the Gripper."""
-
-        self.client.sendCommand(self.message)
+        if self.last_message != self.message:
+            self.client.sendCommand(self.message)
+            self.last_message = self.message
 
 
     def getStatus(self):

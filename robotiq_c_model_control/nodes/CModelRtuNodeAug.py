@@ -68,13 +68,14 @@ def mainLoop(device):
         gripper.client.connectToDevice(device)
     except Exception as e:
         rospy.logwarn("Cannot connect to gripper on this port: {}".format(e))
+	gripper.client.disconnectFromDevice()
         raise
         return
 
-    rospy.init_node('robotiqCModel')
+    rospy.init_node('robotiqCModel', anonymous=True)
 
     # The Gripper status is published on the topic named 'CModelRobotInput'
-    pub = rospy.Publisher('CModelRobotInput', inputMsg.CModel_robot_input)
+    pub = rospy.Publisher('CModelRobotInput', inputMsg.CModel_robot_input, queue_size=1)
 
     # The Gripper command is received from the topic named 'CModelRobotOutput'
     rospy.Subscriber('CModelRobotOutput', outputMsg.CModel_augmented_robot_output, gripper.refreshCommand)
@@ -88,7 +89,6 @@ def mainLoop(device):
         except AttributeError as ae:
             rospy.logwarn("Tried to connect to the wrong port: {}".format(ae))
             raise
-            return
         pub.publish(status)
 
         # Wait a little
