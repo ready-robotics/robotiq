@@ -68,9 +68,8 @@ def mainLoop(device):
         gripper.client.connectToDevice(device)
     except Exception as e:
         rospy.logwarn("Cannot connect to gripper on this port: {}".format(e))
-	gripper.client.disconnectFromDevice()
+        gripper.client.disconnectFromDevice()
         raise
-        return
 
     rospy.init_node('robotiqCModel', anonymous=True)
 

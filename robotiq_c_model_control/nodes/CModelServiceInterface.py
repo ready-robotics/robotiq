@@ -66,7 +66,6 @@ class CModelControl():
                         rospy.loginfo('in motion')
                         self.reported_state = 'OPENING'
                         rospy.sleep(.1)
-		    # rospy.sleep(0.25)
                     self.reported_state = 'OPEN'
                     return 'DONE - OPEN'
                 else:
@@ -81,7 +80,6 @@ class CModelControl():
                         rospy.loginfo('in motion')
                         self.reported_state = 'CLOSING'
                         rospy.sleep(.1)
-		    # rospy.sleep(0.25)
                     self.reported_state = 'CLOSED'
                     return 'DONE - CLOSED'
                 else:

@@ -81,7 +81,6 @@ class robotiqBaseCModelAug:
         # Return the modified command
         return command
 
-
     def refreshCommand(self, command):
         """Function to update the command which will be sent during the next sendCommand() call."""
 
@@ -100,13 +99,11 @@ class robotiqBaseCModelAug:
         self.message.append(command.rSP)
         self.message.append(command.rFR)
 
-
     def sendCommand(self):
         """Send the command to the Gripper."""
         if self.last_message != self.message:
             self.client.sendCommand(self.message)
             self.last_message = self.message
-
 
     def getStatus(self):
         """Request the status from the gripper and return it in the CModel_robot_input msg type."""
