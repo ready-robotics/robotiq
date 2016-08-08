@@ -1,13 +1,11 @@
 #!/usr/bin/env python
-import roslib;
-
-roslib.load_manifest('robotiq_c_model_control')
+import roslib
 import rospy
-
-from robotiq_c_model_control.msg import _CModel_robot_input  as inputMsg
-from robotiq_c_model_control.msg import _CModel_augmented_robot_output  as outputMsg
-from robotiq_c_model_control.msg import _CModel_gripper_command  as commandMsg
-from robotiq_c_model_control.msg import _CModel_gripper_state  as stateMsg
+from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
+from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
+from robotiq_c_model_control.msg import _CModel_gripper_command as commandMsg
+from robotiq_c_model_control.msg import _CModel_gripper_state as stateMsg
+roslib.load_manifest('robotiq_c_model_control')
 
 
 class gripper_control():

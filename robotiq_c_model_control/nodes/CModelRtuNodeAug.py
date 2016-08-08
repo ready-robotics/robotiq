@@ -48,10 +48,9 @@ Examples are provided to control the gripper (CModelSimpleController.py) and int
 
 import roslib
 import rospy
-import sys
 import robotiq_c_model_control.baseCModelAug
 import robotiq_modbus_rtu.comModbusRtu
-from robotiq_c_model_control.msg import _CModel_robot_input  as inputMsg
+from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
 from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
 
 roslib.load_manifest('robotiq_c_model_control')
@@ -87,6 +86,7 @@ def mainLoop(device):
             status = gripper.getStatus()
         except AttributeError as ae:
             rospy.logwarn("Tried to connect to the wrong port: {}".format(ae))
+            gripper.client.disconnectFromDevice()
             raise
         pub.publish(status)
 

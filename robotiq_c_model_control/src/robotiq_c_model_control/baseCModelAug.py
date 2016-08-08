@@ -39,8 +39,9 @@ Module baseCModel: defines a base class for handling command and status of the R
 After being instanciated, a 'client' member must be added to the object. This client depends on the communication protocol used by the Gripper. As an example, the ROS node 'CModelTcpNode.py' instanciate a robotiqBaseCModel and adds a client defined in the module comModbusTcp.
 """
 
-from   robotiq_c_model_control.msg import _CModel_robot_input  as inputMsg
-from   robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
+from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
+from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
+from copy import deepcopy
 
 
 class robotiqBaseCModelAug:
@@ -101,9 +102,15 @@ class robotiqBaseCModelAug:
 
     def sendCommand(self):
         """Send the command to the Gripper."""
+        msg = deepcopy(self.message)
+        if self.last_message != msg:
+            self.client.sendCommand(msg)
+            self.last_message = msg
+        '''
         if self.last_message != self.message:
             self.client.sendCommand(self.message)
             self.last_message = self.message
+        '''
 
     def getStatus(self):
         """Request the status from the gripper and return it in the CModel_robot_input msg type."""

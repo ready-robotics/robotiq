@@ -3,10 +3,8 @@ import roslib; roslib.load_manifest('robotiq_c_model_control')
 import rospy
 
 from std_msgs.msg import Bool, String
-
-from robotiq_c_model_control.msg import _CModel_gripper_command  as commandMsg
-from robotiq_c_model_control.msg import _CModel_gripper_state  as stateMsg
-
+from robotiq_c_model_control.msg import _CModel_gripper_command as commandMsg
+from robotiq_c_model_control.msg import _CModel_gripper_state as stateMsg
 from robotiq_c_model_control.srv import *
 
 
@@ -42,13 +40,12 @@ class CModelControl():
         if msg.fault != 0:
             self.reset()
             self.initialized = False
-            msg.status = 0
-            rospy.sleep(0.25)
+            rospy.sleep(0.5)
 
         if not self.initialized:  # or msg.status != 3:
             # Initialize and Open
             self.initialize()
-            rospy.sleep(0.5)
+            rospy.sleep(1.5)
             self.open()
             rospy.sleep(0.5)
             self.reported_state = 'OPEN'
@@ -61,11 +58,12 @@ class CModelControl():
                     self.open()
                     while not self.last_gripper_state.in_motion and self.last_gripper_state.at_requested_pos:
                         rospy.loginfo('waiting for motion')
-                        rospy.sleep(.1)
+                        rospy.sleep(0.1)
                     while self.last_gripper_state.in_motion:
                         rospy.loginfo('in motion')
                         self.reported_state = 'OPENING'
-                        rospy.sleep(.1)
+                        rospy.sleep(0.1)
+                    rospy.sleep(0.4)
                     self.reported_state = 'OPEN'
                     return 'DONE - OPEN'
                 else:
@@ -75,11 +73,12 @@ class CModelControl():
                     self.close()
                     while not self.last_gripper_state.in_motion and self.last_gripper_state.at_requested_pos:
                         rospy.loginfo('waiting for motion')
-                        rospy.sleep(.1)
+                        rospy.sleep(0.1)
                     while self.last_gripper_state.in_motion:
                         rospy.loginfo('in motion')
                         self.reported_state = 'CLOSING'
-                        rospy.sleep(.1)
+                        rospy.sleep(0.1)
+                    rospy.sleep(0.4)
                     self.reported_state = 'CLOSED'
                     return 'DONE - CLOSED'
                 else:
@@ -107,7 +106,7 @@ class CModelControl():
         bmsg.release = False
         bmsg.request_pos = 0
         bmsg.speed = 255
-        bmsg.force = 0  # 255
+        bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'OPEN'
         self.reported_state = 'OPENING'
@@ -121,7 +120,7 @@ class CModelControl():
         bmsg.release = False
         bmsg.request_pos = 0
         bmsg.speed = 255
-        bmsg.force = 0  # 255
+        bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'OPEN'
         self.reported_state = 'RESETTING'
@@ -135,7 +134,7 @@ class CModelControl():
         bmsg.release = False
         bmsg.request_pos = 0
         bmsg.speed = 255
-        bmsg.force = 0  # 255
+        bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'OPEN'
         self.reported_state = 'INITIALIZING'
@@ -149,7 +148,7 @@ class CModelControl():
         bmsg.release = False
         bmsg.request_pos = 0
         bmsg.speed = 255
-        bmsg.force = 0  # 255
+        bmsg.force = 255
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'CLOSED'
         self.reported_state = 'CLOSING'
