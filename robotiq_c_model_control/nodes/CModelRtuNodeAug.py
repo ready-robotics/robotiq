@@ -65,11 +65,12 @@ def mainLoop(device):
 
     # We connect to the address received as an argument
     try:
-        gripper.client.connectToDevice(device)
-        fcntl.flock(gripper.client.socket, LOCK_EX)
+        flag = gripper.client.connectToDevice(device)
+        if flag is False:
+            raise Exception('Could Not Connect To Device!')
+        fcntl.flock(gripper.client.client.socket, fcntl.LOCK_EX)
     except Exception as e:
-        rospy.logwarn("Cannot connect to gripper on this port: {}".format(e))
-        fcntl.flock(gripper.client.socket, LOCK_UN)
+        print "Cannot connect to gripper on this port: {}".format(e)
         gripper.client.disconnectFromDevice()
         raise
 
@@ -89,7 +90,7 @@ def mainLoop(device):
             status = gripper.getStatus()
         except AttributeError as ae:
             rospy.logwarn("Tried to connect to the wrong port: {}".format(ae))
-            fcntl.flock(gripper.client.socket, LOCK_UN)
+            fcntl.flock(gripper.client.client.socket, fcntl.LOCK_UN)
             gripper.client.disconnectFromDevice()
             raise
         pub.publish(status)
@@ -101,7 +102,7 @@ def mainLoop(device):
         gripper.sendCommand()
 
     # Release lock on shutdown
-    fcntl.flock(gripper.client.socket, LOCK_UN)
+    fcntl.flock(gripper.client.client.socket, fcntl.LOCK_UN)
 
     # Wait a little
     # rospy.sleep(0.05)
