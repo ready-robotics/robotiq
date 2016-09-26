@@ -48,6 +48,7 @@
 #define _BSD_SOURCE
 #include <termios.h>
 #include <unistd.h>
+#include <sys/file.h>
 #elif defined(_WIN32)||defined(WIN32) /*For Windows*/
 #include <windows.h>
 #endif
@@ -1171,11 +1172,12 @@ static UINT_8 rq_com_identify_device(INT_8 const * const d_name)
 
 
 	fd_connexion = open(port_com, O_RDWR | O_NOCTTY | O_NDELAY | O_EXCL);
-	try:
+	try {
 	    flock(fd_connexion, LOCK_EX);
-	catch:
+	}
+	catch (...) {
 	    return 0;
-
+	}
 	//The serial port is open
 	if(fd_connexion != -1)
 	{
