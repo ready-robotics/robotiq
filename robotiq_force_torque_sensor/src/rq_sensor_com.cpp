@@ -1168,7 +1168,13 @@ static UINT_8 rq_com_identify_device(INT_8 const * const d_name)
 	strcpy(dirParent, "/dev/");
 	strcat(dirParent, d_name);
 	strcpy(port_com, dirParent);
+
+
 	fd_connexion = open(port_com, O_RDWR | O_NOCTTY | O_NDELAY | O_EXCL);
+	try:
+	    flock(fd_connexion, LOCK_EX);
+	catch:
+	    return 0;
 
 	//The serial port is open
 	if(fd_connexion != -1)

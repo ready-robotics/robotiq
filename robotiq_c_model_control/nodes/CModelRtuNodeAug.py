@@ -50,6 +50,7 @@ import roslib
 import rospy
 import robotiq_c_model_control.baseCModelAug
 import robotiq_modbus_rtu.comModbusRtu
+import fcntl
 from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
 from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
 
@@ -65,8 +66,10 @@ def mainLoop(device):
     # We connect to the address received as an argument
     try:
         gripper.client.connectToDevice(device)
+        fcntl.flock(gripper.client.socket, LOCK_EX)
     except Exception as e:
         rospy.logwarn("Cannot connect to gripper on this port: {}".format(e))
+        fcntl.flock(gripper.client.socket, LOCK_UN)
         gripper.client.disconnectFromDevice()
         raise
 
@@ -86,6 +89,7 @@ def mainLoop(device):
             status = gripper.getStatus()
         except AttributeError as ae:
             rospy.logwarn("Tried to connect to the wrong port: {}".format(ae))
+            fcntl.flock(gripper.client.socket, LOCK_UN)
             gripper.client.disconnectFromDevice()
             raise
         pub.publish(status)
@@ -95,6 +99,9 @@ def mainLoop(device):
 
         # Send the most recent command
         gripper.sendCommand()
+
+    # Release lock on shutdown
+    fcntl.flock(gripper.client.socket, LOCK_UN)
 
     # Wait a little
     # rospy.sleep(0.05)
