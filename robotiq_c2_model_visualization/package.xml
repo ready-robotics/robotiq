@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>robotiq_c2_model_visualization</name>
-  <version>0.1.5</version>
+  <version>0.1.6</version>
   <description>
     <p>
       Package containing visual components (urdfs, meshes, etc.) for use in simulating
