@@ -1,6 +1,6 @@
 <package>
   <name>robotiq_s_model_visualization</name>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
   <description>robotiq</description>
   <maintainer email="sedwards@swri.org">Shaun Edwards</maintainer>
   <license>BSD</license>

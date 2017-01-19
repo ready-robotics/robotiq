@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>robotiq_force_torque_sensor</name>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
   <description>Package for reading data from a Robotiq Force Torque Sensor</description>
   <maintainer email="nicolas@robotiq.com">Nicolas Lauzier</maintainer>
   <author email="jsavoie20@gmail.com">Jonathan Savoie</author>
