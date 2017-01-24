@@ -1,6 +1,6 @@
 <package>
   <name>robotiq</name>
-  <version>0.3.2</version>
+  <version>0.4.0</version>
   <description>ROS drivers for Robotiq Adaptive Grippers and Robotiq Force Torque Sensor</description>
   <maintainer email="sedwards@swri.org">Shaun Edwards</maintainer>
   <license>BSD</license>
