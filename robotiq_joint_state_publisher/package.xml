@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>robotiq_joint_state_publisher</name>
-  <version>0.6.0</version>
+  <version>0.4.0</version>
   <description>Publishes joint states of Robotiq gripper</description>
   <maintainer email="karl.kruusamae@utexas.edu">Karl Kruusamäe</maintainer>
   <license>3-clause BSD</license>
