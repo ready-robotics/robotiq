@@ -52,7 +52,6 @@
 #elif defined(_WIN32)||defined(WIN32) /*For Windows*/
 #include <windows.h>
 #endif
-
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
@@ -147,7 +146,7 @@ INT_8 rq_sensor_com()
 	struct dirent *entrydirectory = NULL;
 
 	//Close a previously opened connection to a device
-	close(fd_connexion);
+	close(fd_connexion)
 	if ((dir = opendir("/sys/class/tty/")) == NULL)
 	{
 		return -1;
@@ -1170,10 +1169,13 @@ static UINT_8 rq_com_identify_device(INT_8 const * const d_name)
 	strcat(dirParent, d_name);
 	strcpy(port_com, dirParent);
 
-
 	fd_connexion = open(port_com, O_RDWR | O_NOCTTY | O_NDELAY | O_EXCL);
 	try {
-	    flock(fd_connexion, LOCK_EX);
+	    if (flock(fd_connexion, LOCK_EX|LOCK_NB) == -1) {
+	        if (errno == EWOULDBLOCK) {
+		    return 0;
+	        }
+	    }
 	}
 	catch (...) {
 	    return 0;
@@ -1181,17 +1183,17 @@ static UINT_8 rq_com_identify_device(INT_8 const * const d_name)
 	//The serial port is open
 	if(fd_connexion != -1)
 	{
-		if(set_com_attribs(fd_connexion,B19200) != -1)
+	    if(set_com_attribs(fd_connexion,B19200) != -1)
+	    {
+		//Try connecting to the sensor
+		if (rq_com_tentative_connexion() == 1)
 		{
-			//Try connecting to the sensor
-			if (rq_com_tentative_connexion() == 1)
-			{
-				return 1;
-			}
+		    return 1;
 		}
+	    }
 		
-		//The device is identified, close the connection
-		close(fd_connexion);
+	    //The device is identified, close the connection
+	    close(fd_connexion);
 	}
 
 	return 0;
