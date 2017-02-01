@@ -146,7 +146,7 @@ INT_8 rq_sensor_com()
 	struct dirent *entrydirectory = NULL;
 
 	//Close a previously opened connection to a device
-	close(fd_connexion)
+	close(fd_connexion);
 	if ((dir = opendir("/sys/class/tty/")) == NULL)
 	{
 		return -1;
