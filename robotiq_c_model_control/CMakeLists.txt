@@ -1,7 +1,7 @@
 # http://ros.org/doc/groovy/api/catkin/html/user_guide/supposed.html
 cmake_minimum_required(VERSION 2.8.3)
 project(robotiq_c_model_control)
-find_package(catkin REQUIRED COMPONENTS rospy message_generation std_msgs)
+find_package(catkin REQUIRED COMPONENTS rospy message_generation std_msgs bondpy)
 
 
 #set the default path for built executables to the "bin" directory
