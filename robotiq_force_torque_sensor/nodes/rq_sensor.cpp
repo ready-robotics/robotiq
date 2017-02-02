@@ -145,6 +145,7 @@ static robotiq_force_torque_sensor::ft_sensor get_data(void)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "robotiq_force_torque_sensor");
+	ROS_INFO("Trying to Start Sensor");
 	ros::NodeHandle n;
 	ros::param::param<int>("~max_retries", max_retries_, 100);
 
@@ -158,21 +159,18 @@ int main(int argc, char **argv)
 	{
 		wait_for_other_connection();
 	}
-
 	//Reads basic info on the sensor
 	ret = rq_sensor_state(max_retries_);
 	if(ret == -1)
 	{
 		wait_for_other_connection();
 	}
-
 	//Starts the stream
 	ret = rq_sensor_state(max_retries_);
 	if(ret == -1)
 	{
 		wait_for_other_connection();
 	}
-	
 	ros::Publisher sensor_pub = n.advertise<robotiq_force_torque_sensor::ft_sensor>("robotiq_force_torque_sensor", 512);
 	ros::Publisher wrench_pub = n.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
 	ros::ServiceServer service = n.advertiseService("robotiq_force_torque_sensor_acc", receiverCallback);
