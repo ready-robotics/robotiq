@@ -77,11 +77,6 @@ def mainLoop(device):
         raise
 
     rospy.init_node('robotiqCModel', anonymous=True)
-    while not rospy.has_param('/robotiq_85mm_gripper_bond_id'):
-        rospy.sleep(0.1)
-    NODE_ID = rospy.get_param('/robotiq_85mm_gripper_bond_id')
-    bond = bondpy.Bond('robotiq_bond_topic', NODE_ID)
-    bond.start()
     # The Gripper status is published on the topic named 'CModelRobotInput'
     pub = rospy.Publisher('CModelRobotInput', inputMsg.CModel_robot_input, queue_size=1)
 
@@ -99,9 +94,14 @@ def mainLoop(device):
             fcntl.flock(gripper.client.client.socket, fcntl.LOCK_UN)
             gripper.client.disconnectFromDevice()
             raise
-        bond.break_bond()
+        while not rospy.has_param('/robotiq_85mm_gripper_bond_id'):
+            rospy.sleep(0.1)
+        NODE_ID = rospy.get_param('/robotiq_85mm_gripper_bond_id')
+        bond = bondpy.Bond('/robotiq_bond_topic', NODE_ID)
+        bond.start()
         pub.publish(status)
-
+        bond.break_bond()
+        bond.shutdown()
         # Wait a little
         # rospy.sleep(0.05)
 
