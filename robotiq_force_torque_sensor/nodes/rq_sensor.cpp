@@ -110,9 +110,9 @@ bool wait_for_other_connection(void)
 	INT_8 ret;
 	INT_8 count = 0;
 
-	while(ros::ok() && count < 12)
+	while(ros::ok() && count < 6)
 	{
-	    if (count % 4 == 0)
+	    if (count % 2 == 0)
 	    {
 		    ROS_INFO("Waiting for sensor connection...");
 		}
@@ -240,6 +240,11 @@ int main(int argc, char **argv)
 		ros::spinOnce();
 	}
 
+	if (!connected)
+	{
+	    connection_msg.data = connected;
+	    connection_pub.publish(connection_msg);
+	}
 
 	ROS_INFO("Sensor Stopped");
 	return 0;
