@@ -203,7 +203,11 @@ int main(int argc, char **argv)
 	connection_pub.publish(connection_msg);
 	ros::spinOnce();
 
-	ROS_INFO("Starting Sensor");
+    if (connected)
+    {
+	    ROS_INFO("Starting Sensor");
+	}
+	
 	while(ros::ok() && connected)
 	{
 	    connected = try_connection();
@@ -217,7 +221,7 @@ int main(int argc, char **argv)
 			{
 				sensor_pub.publish(msgStream);
 
-				//compose WrenchStamped Msg
+				// compose WrenchStamped Msg
 				wrenchMsg.header.stamp = ros::Time::now();
 				wrenchMsg.wrench.force.x = msgStream.Fx;
 				wrenchMsg.wrench.force.y = msgStream.Fy;
@@ -244,6 +248,7 @@ int main(int argc, char **argv)
 	{
 	    connection_msg.data = connected;
 	    connection_pub.publish(connection_msg);
+	    ros::spinOnce();
 	}
 
 	ROS_INFO("Sensor Stopped");
