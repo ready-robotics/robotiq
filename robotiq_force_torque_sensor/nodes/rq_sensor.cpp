@@ -45,13 +45,15 @@
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
 #include "geometry_msgs/WrenchStamped.h"
 #include "robotiq_force_torque_sensor/rq_sensor_state.h"
 #include "robotiq_force_torque_sensor/ft_sensor.h"
 #include "robotiq_force_torque_sensor/sensor_accessor.h"
 
 static void decode_message_and_do(INT_8 const  * const buff, INT_8 * const ret);
-static void wait_for_other_connection(void);
+bool wait_for_other_connection(void);
+bool try_connection(void);
 static int max_retries_(100);
 
 ros::Publisher sensor_pub_acc;
@@ -100,27 +102,50 @@ bool receiverCallback(robotiq_force_torque_sensor::sensor_accessor::Request& req
 }
 
 /**
- * \fn static void wait_for_other_connection()
+ * \fn bool wait_for_other_connection()
  * \brief Each second, checks for a sensor that has been connected
  */
-static void wait_for_other_connection(void)
+bool wait_for_other_connection(void)
 {
 	INT_8 ret;
+	INT_8 count = 0;
 
-	while(ros::ok())
+	while(ros::ok() && count < 12)
 	{
-		ROS_INFO("Waiting for sensor connection...");
-		usleep(1000000);//Attend 1 seconde.
+	    if (count % 4 == 0)
+	    {
+		    ROS_INFO("Waiting for sensor connection...");
+		}
+		usleep(1000000); //Attend 1 seconde.
 
 		ret = rq_sensor_state(max_retries_);
 		if(ret == 0)
 		{
 			ROS_INFO("Sensor connected!");
-			break;
+			return true;
 		}
-
+        count++;
 		ros::spinOnce();
 	}
+	return false;
+}
+
+/**
+ * \fn bool try_connection()
+ * \brief A helper function to avoid repeated code
+ */
+bool try_connection(void)
+{
+	INT_8 ret;
+	ret = rq_sensor_state(max_retries_);
+	if(ret == -1)
+	{
+		if (!wait_for_other_connection())
+		{
+		    return false;
+		}
+	}
+	return true;
 }
 
 /**
@@ -147,47 +172,41 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "robotiq_force_torque_sensor");
 	ROS_INFO("Trying to Start Sensor");
 	ros::NodeHandle n;
+	std_msgs::Bool connection_msg;
 	ros::param::param<int>("~max_retries", max_retries_, 100);
 
 	INT_8 bufStream[512];
+	INT_32 publish_count = 0;
 	robotiq_force_torque_sensor::ft_sensor msgStream;
-	INT_8 ret; 
+    bool connected = false;
 
 	//If we can't initialize, we return an error
-	ret = rq_sensor_state(max_retries_);
-	if(ret == -1)
-	{
-		wait_for_other_connection();
-	}
+	connected = try_connection();
+
 	//Reads basic info on the sensor
-	ret = rq_sensor_state(max_retries_);
-	if(ret == -1)
-	{
-		wait_for_other_connection();
-	}
+	connected = try_connection();
+
 	//Starts the stream
-	ret = rq_sensor_state(max_retries_);
-	if(ret == -1)
-	{
-		wait_for_other_connection();
-	}
+	connected = try_connection();
+
 	ros::Publisher sensor_pub = n.advertise<robotiq_force_torque_sensor::ft_sensor>("robotiq_force_torque_sensor", 512);
 	ros::Publisher wrench_pub = n.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
+	ros::Publisher connection_pub = n.advertise<std_msgs::Bool>("robotiq_force_torque_sensor_connected", 1);
 	ros::ServiceServer service = n.advertiseService("robotiq_force_torque_sensor_acc", receiverCallback);
 
 	//std_msgs::String msg;
 	geometry_msgs::WrenchStamped wrenchMsg;
 	ros::param::param<std::string>("~frame_id", wrenchMsg.header.frame_id, "robotiq_force_torque_frame_id");
 
-	ROS_INFO("Starting Sensor");
-	while(ros::ok())
-	{
-		ret = rq_sensor_state(max_retries_);
+	// Publish the connection state
+	connection_msg.data = connected;
+	connection_pub.publish(connection_msg);
+	ros::spinOnce();
 
-		if(ret == -1)
-		{
-			wait_for_other_connection();
-		}
+	ROS_INFO("Starting Sensor");
+	while(ros::ok() && connected)
+	{
+	    connected = try_connection();
 
 		if(rq_sensor_get_current_state() == RQ_STATE_RUN)
 		{
@@ -210,7 +229,18 @@ int main(int argc, char **argv)
 			}
 		}
 
+        // Publish the connection state every 1000 iterations
+        if (publish_count == 1000)
+        {
+            connection_msg.data = connected;
+	        connection_pub.publish(connection_msg);
+	        publish_count = 0;
+        }
+        publish_count++;
 		ros::spinOnce();
 	}
+
+
+	ROS_INFO("Sensor Stopped");
 	return 0;
 }
