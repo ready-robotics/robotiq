@@ -2,7 +2,7 @@
 import roslib; roslib.load_manifest('robotiq_c_model_control')
 import rospy
 
-from std_msgs.msg import Bool, String
+from std_msgs.msg import String
 from robotiq_c_model_control.msg import _CModel_gripper_command as commandMsg
 from robotiq_c_model_control.msg import _CModel_gripper_state as stateMsg
 from robotiq_c_model_control.srv import *
@@ -16,15 +16,16 @@ class CModelControl():
         self.open_state_ = False
         self.close_state_ = False
 
-        self.gripper_cmd_pub = rospy.Publisher("gripper_command", commandMsg.CModel_gripper_command, queue_size=1)
+        self.gripper_cmd_pub = rospy.Publisher('gripper_command', commandMsg.CModel_gripper_command, queue_size=1)
         self.gripper_state_sub = rospy.Subscriber('gripper_state', stateMsg.CModel_gripper_state, self.gripper_state_cb,
                                                   queue_size=1)
 
-        self.open_service = rospy.Service("/robotiq_c_model_control/Open", Open, self.service_open)
+        self.open_service = rospy.Service('/robotiq_c_model_control/Open', Open, self.service_open)
         rospy.logwarn('C-Model Gripper Service Layer: Interfaces Initialized')
 
-        self.state_pub = rospy.Publisher("/gripper_state", String, queue_size=1)
-        
+        self.state_pub = rospy.Publisher('/gripper_state', String, queue_size=1)
+
+        # TODO: Need to check if the com layer comes up to see if the gripper service should work
         self.last_gripper_state = None
         self.state = 'RESET'
         self.reported_state = 'RESET'
@@ -52,6 +53,8 @@ class CModelControl():
             self.initialized = True
 
     def service_open(self, req):
+        if self.last_gripper_state is None:
+            return 'FAILED - NO GRIPPER DATA'
         if req.wait is True:
             if req.state is True:  # Open Gripper
                 if not self.state == 'OPEN':
