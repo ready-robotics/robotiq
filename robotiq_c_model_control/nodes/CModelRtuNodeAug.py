@@ -94,14 +94,11 @@ def mainLoop(device):
             fcntl.flock(gripper.client.client.socket, fcntl.LOCK_UN)
             gripper.client.disconnectFromDevice()
             raise
-        while not rospy.has_param('/robotiq_85mm_gripper_bond_id'):
-            rospy.sleep(0.1)
-        NODE_ID = rospy.get_param('/robotiq_85mm_gripper_bond_id')
-        bond = bondpy.Bond('/robotiq_bond_topic', NODE_ID)
+        bond = bondpy.Bond('/robotiq_85mm_gripper', 'robotiq_85mm_gripper')
+        bond.on_broken = bond.shutdown
         bond.start()
         pub.publish(status)
         bond.break_bond()
-        bond.shutdown()
         # Wait a little
         # rospy.sleep(0.05)
 
