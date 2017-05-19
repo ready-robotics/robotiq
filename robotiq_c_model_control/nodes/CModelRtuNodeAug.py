@@ -46,19 +46,17 @@ Examples are provided to control the gripper (CModelSimpleController.py) and int
 (CModelStatusListener.py).
 """
 
-import roslib
 import rospy
 import robotiq_c_model_control.baseCModelAug
 import robotiq_modbus_rtu.comModbusRtu
 import fcntl
-from bondpy import bondpy
+from bondpy import bondpy  # this is the local version not the ros version
 from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
 from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
 
-roslib.load_manifest('robotiq_c_model_control')
-roslib.load_manifest('robotiq_modbus_rtu')
 
 NODE_ID = 'robotiq_node'
+
 
 def mainLoop(device):
     # Gripper is a C-Model with a TCP connection
