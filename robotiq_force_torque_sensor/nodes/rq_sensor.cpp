@@ -43,6 +43,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "boost/bind.hpp"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Bool.h"
@@ -51,13 +52,14 @@
 #include "robotiq_force_torque_sensor/rq_sensor_state.h"
 #include "robotiq_force_torque_sensor/ft_sensor.h"
 #include "robotiq_force_torque_sensor/sensor_accessor.h"
+#include "bondcpp/bond.h"
 
 static void decode_message_and_do(INT_8 const  * const buff, INT_8 * const ret);
 bool wait_for_other_connection(void);
 bool try_connection(void);
-static int max_retries_(100);
-
-ros::Publisher sensor_pub_acc;
+static int max_retries_(5);
+void shutdown(void);
+bond::Bond *fs_bond;
 
 /**
  * \brief Decode the message received and do the associated action
@@ -117,7 +119,7 @@ bool wait_for_other_connection(void)
 	    {
 		    ROS_INFO("Waiting for sensor connection...");
 		}
-		usleep(1000000); //Attend 1 seconde.
+		usleep(10000); //Attend 1 seconde.
 
 		ret = rq_sensor_state(max_retries_);
 		if(ret == 0)
@@ -168,9 +170,16 @@ static robotiq_force_torque_sensor::ft_sensor get_data(void)
 	return msgStream;
 }
 
+void shutdown(void) {
+    delete fs_bond;
+}
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "robotiq_force_torque_sensor");
+	fs_bond = new bond::Bond("/robotiq_ft300_force_torque_sensor", "robotiq_ft300_force_torque_sensor");
+    fs_bond->setBrokenCallback(&shutdown);
+    fs_bond->start();
 	ROS_INFO("Trying to Start Sensor");
 	ros::NodeHandle n;
 	std_msgs::Bool connection_msg;
@@ -185,10 +194,14 @@ int main(int argc, char **argv)
 	connected = try_connection();
 
 	//Reads basic info on the sensor
-	connected = try_connection();
+	if (connected) {
+	    connected = try_connection();
+	}
 
 	//Starts the stream
-	connected = try_connection();
+	if (connected) {
+	    connected = try_connection();
+	}
 
 	ros::Publisher sensor_pub = n.advertise<robotiq_force_torque_sensor::ft_sensor>("robotiq_force_torque_sensor", 512);
 	ros::Publisher wrench_pub = n.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
@@ -210,6 +223,9 @@ int main(int argc, char **argv)
     {
 	    ROS_INFO("Starting Sensor");
 	}
+
+	fs_bond->waitUntilFormed(ros::Duration(1, 0));
+    fs_bond->breakBond();
 	
 	while(ros::ok() && connected)
 	{
