@@ -3,6 +3,7 @@ project(robotiq_force_torque_sensor)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  bondcpp
   std_msgs
   message_generation
 )
