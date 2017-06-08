@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 		}
 
         // Publish the connection state every 1000 iterations
-        if (publish_count == 250)
+        if (publish_count % 10 == 0)
         {
 	        watchdog_pub.publish(watchdog_msg);
         }
