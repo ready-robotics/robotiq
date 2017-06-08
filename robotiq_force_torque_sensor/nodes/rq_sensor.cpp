@@ -60,6 +60,10 @@ bool try_connection(void);
 static int max_retries_(5);
 void shutdown(void);
 bond::Bond *fs_bond;
+ros::Publisher sensor_pub;
+ros::Publisher wrench_pub;
+ros::Publisher watchdog_pub;
+ros::ServiceServer service;
 
 /**
  * \brief Decode the message received and do the associated action
@@ -78,7 +82,7 @@ static void decode_message_and_do(INT_8 const  * const buff, INT_8 * const ret)
 
 	strncpy(get_or_set, &buff[0], 3);
 	strncpy(nom_var, &buff[4], strlen(buff) -3);
-	
+
 	if(strstr(get_or_set, "GET"))
 	{
 		rq_state_get_command(nom_var, ret);
@@ -180,6 +184,7 @@ int main(int argc, char **argv)
 	fs_bond = new bond::Bond("/robotiq_ft300_force_torque_sensor", "robotiq_ft300_force_torque_sensor");
     fs_bond->setBrokenCallback(&shutdown);
     fs_bond->start();
+    fs_bond->waitUntilFormed(ros::Duration(1, 0));
 	ROS_INFO("Trying to Start Sensor");
 	ros::NodeHandle n;
 	std_msgs::Bool connection_msg;
@@ -203,11 +208,13 @@ int main(int argc, char **argv)
 	    connected = try_connection();
 	}
 
-	ros::Publisher sensor_pub = n.advertise<robotiq_force_torque_sensor::ft_sensor>("robotiq_force_torque_sensor", 512);
-	ros::Publisher wrench_pub = n.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
 	ros::Publisher connection_pub = n.advertise<std_msgs::Bool>("robotiq_force_torque_sensor_connected", 1);
-	ros::Publisher watchdog_pub = n.advertise<std_msgs::Empty>("/robotiq_ft300_force_torque_sensor/watchdog", 1);
-	ros::ServiceServer service = n.advertiseService("robotiq_force_torque_sensor_acc", receiverCallback);
+	if (connected) {
+		sensor_pub = n.advertise<robotiq_force_torque_sensor::ft_sensor>("robotiq_force_torque_sensor", 512);
+		wrench_pub = n.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
+		watchdog_pub = n.advertise<std_msgs::Empty>("/robotiq_ft300_force_torque_sensor/watchdog", 1);
+		service = n.advertiseService("robotiq_force_torque_sensor_acc", receiverCallback);
+	}
 
 	//std_msgs::String msg;
 	geometry_msgs::WrenchStamped wrenchMsg;
@@ -224,9 +231,8 @@ int main(int argc, char **argv)
 	    ROS_INFO("Starting Sensor");
 	}
 
-	fs_bond->waitUntilFormed(ros::Duration(1, 0));
     fs_bond->breakBond();
-	
+
 	while(ros::ok() && connected)
 	{
 	    connected = try_connection();
