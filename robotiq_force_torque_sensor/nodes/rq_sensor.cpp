@@ -46,6 +46,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Bool.h"
+#include "std_msgs/Empty.h"
 #include "geometry_msgs/WrenchStamped.h"
 #include "robotiq_force_torque_sensor/rq_sensor_state.h"
 #include "robotiq_force_torque_sensor/ft_sensor.h"
@@ -192,10 +193,12 @@ int main(int argc, char **argv)
 	ros::Publisher sensor_pub = n.advertise<robotiq_force_torque_sensor::ft_sensor>("robotiq_force_torque_sensor", 512);
 	ros::Publisher wrench_pub = n.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
 	ros::Publisher connection_pub = n.advertise<std_msgs::Bool>("robotiq_force_torque_sensor_connected", 1);
+	ros::Publisher watchdog_pub = n.advertise<std_msgs::Empty>("/robotiq_ft300_force_torque_sensor/watchdog", 1);
 	ros::ServiceServer service = n.advertiseService("robotiq_force_torque_sensor_acc", receiverCallback);
 
 	//std_msgs::String msg;
 	geometry_msgs::WrenchStamped wrenchMsg;
+	std_msgs::Empty watchdog_msg;
 	ros::param::param<std::string>("~frame_id", wrenchMsg.header.frame_id, "robotiq_force_torque_frame_id");
 
 	// Publish the connection state
@@ -234,6 +237,11 @@ int main(int argc, char **argv)
 		}
 
         // Publish the connection state every 1000 iterations
+        if (publish_count == 250)
+        {
+	        watchdog_pub.publish(watchdog_msg);
+        }
+
         if (publish_count == 1000)
         {
             connection_msg.data = connected;

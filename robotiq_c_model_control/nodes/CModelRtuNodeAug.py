@@ -51,6 +51,7 @@ import robotiq_c_model_control.baseCModelAug
 import robotiq_modbus_rtu.comModbusRtu
 import fcntl
 from bondpy import bondpy  # this is the local version not the ros version
+from std_msgs.msg import Empty
 from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
 from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
 
@@ -77,11 +78,12 @@ def mainLoop(device):
     rospy.init_node('robotiqCModel', anonymous=True)
     # The Gripper status is published on the topic named 'CModelRobotInput'
     pub = rospy.Publisher('CModelRobotInput', inputMsg.CModel_robot_input, queue_size=1)
-
+    watchdog_pub = rospy.Publisher('/robotiq_85mm_gripper/watchdog', Empty, queue_size=1)
     # The Gripper command is received from the topic named 'CModelRobotOutput'
     rospy.Subscriber('CModelRobotOutput', outputMsg.CModel_augmented_robot_output, gripper.refreshCommand)
 
     # We loop
+    startup = True
     while not rospy.is_shutdown():
 
         # Get and publish the Gripper status
@@ -92,11 +94,18 @@ def mainLoop(device):
             fcntl.flock(gripper.client.client.socket, fcntl.LOCK_UN)
             gripper.client.disconnectFromDevice()
             raise
-        bond = bondpy.Bond('/robotiq_85mm_gripper', 'robotiq_85mm_gripper')
-        bond.on_broken = bond.shutdown
-        bond.start()
-        pub.publish(status)
-        bond.break_bond()
+
+        if startup:
+            bond = bondpy.Bond('/robotiq_85mm_gripper', 'robotiq_85mm_gripper')
+            bond.on_broken = bond.shutdown
+            bond.start()
+            pub.publish(status)
+            watchdog_pub.publish(Empty())
+            bond.break_bond()
+            startup = False
+        else:
+            watchdog_pub.publish(Empty())
+            pub.publish(status)
         # Wait a little
         # rospy.sleep(0.05)
 
