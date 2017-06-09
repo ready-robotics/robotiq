@@ -135,7 +135,7 @@ HANDLE hSerial;
 /**
  * \fn void rq_sensor_com(void)
  * \brief Discovers and initialize the communication with the sensor
- * \details The functions loops  through all the serial com ports 
+ * \details The functions loops  through all the serial com ports
  *          and polls them to discover the sensor
  */
 INT_8 rq_sensor_com()
@@ -156,7 +156,7 @@ INT_8 rq_sensor_com()
 	while ((entrydirectory = readdir(dir)) != NULL && device_found == 0)
 	{
 		//Look for a serial device
-		if (strstr(entrydirectory->d_name, "ttyS") || 
+		if (strstr(entrydirectory->d_name, "ttyS") ||
 			strstr(entrydirectory->d_name, "ttyUSB"))
 		{
 			device_found = rq_com_identify_device(entrydirectory->d_name);
@@ -322,7 +322,7 @@ void rq_com_listen_stream(void)
 	static INT_32 last_byte = 0;
 	static INT_32 new_message = 0;
 	INT_32 i = 0;
-	INT_32 j = 0;    
+	INT_32 j = 0;
 
 	//Capture and store the current value of the sensor and use it to
 	//zero subsequent sensor values
@@ -384,8 +384,8 @@ void rq_com_listen_stream(void)
 	memset( rq_com_snd_buff, 0, sizeof(rq_com_snd_buff));
 
 	//If there is enough characters,...
-	if(rq_com_rcv_len2 >= 16 && rq_com_rcv_len >= 1) 
-	{        
+	if(rq_com_rcv_len2 >= 16 && rq_com_rcv_len >= 1)
+	{
 		//Search for a valid stream message in the buffer
 		for(i = rq_com_rcv_len2 - 16; i >= 0; i--)
 		{
@@ -469,7 +469,7 @@ static void rq_com_send_jam_signal(void)
 static void rq_com_stop_stream_after_boot(void)
 {
 	static INT_32 counter = 0;
-	
+
 	while(rq_com_stream_detected)
 	{
 		counter++;
@@ -536,7 +536,7 @@ static INT_8 rq_com_send_fc_03(UINT_16 base, UINT_16 n, UINT_16 * const data)
 	UINT_8 bytes_read = 0;
 	INT_32 i = 0;
 	INT_32 cpt = 0;
-	UINT_8 data_request[n]; 
+	UINT_8 data_request[n];
 	UINT_16 retries = 0;
 
 	//precondition, null pointer
@@ -713,7 +713,7 @@ static INT_32 rq_com_write_port(UINT_8 const * const buf, UINT_32 buf_len)
 
 /**
  * \fn static UINT_16 rq_com_compute_crc(UINT_8 * adr, INT_32 length )
- * \param adr, Address of the first byte 
+ * \param adr, Address of the first byte
  * \param length Length of the buffer on which the crc is computed
  * \return Value of the crc
  */
@@ -744,7 +744,7 @@ static UINT_16 rq_com_compute_crc(UINT_8 const * adr, INT_32 length )
 		}
 
 		k=0;
-		
+
 		//Tant que le byte n'est pas complété
 		while (k < 8)
 		{
@@ -757,15 +757,15 @@ static UINT_16 rq_com_compute_crc(UINT_8 const * adr, INT_32 length )
 			{
 				CRC_calc >>= 1;			//Shift de 1 bit vers la droite
 			}
-	
+
 			k++;
 		}
-	
+
 		//Incrémente l'adresse et le compteur d'adresse
 		adr++;
 		j++;
 	}
-	
+
 	return CRC_calc;
 }
 
@@ -782,19 +782,19 @@ static void rq_com_send_fc_03_request(UINT_16 base, UINT_16 n)
 	UINT_8 reg[2];
 	UINT_8 words[2];
 	UINT_16 CRC;
-	
+
 	//Si le nombre de registre est impair
 	if(n % 2 != 0)
 	{
 		n += 1;
 	}
-	
+
 	//Scinder en LSB et MSB
 	reg[0]   = (UINT_8)(base >> 8); //MSB to the left
 	reg[1]   = (UINT_8)(base & 0x00FF); //LSB to the right
 	words[0] = (UINT_8)((n/2) >> 8); //MSB to the left
 	words[1] = (UINT_8)((n/2) & 0x00FF); //LSB to the right
-	
+
 	//Build the request
 	buf[length++] = 9; //slave address
 	buf[length++] = 3;
@@ -802,14 +802,14 @@ static void rq_com_send_fc_03_request(UINT_16 base, UINT_16 n)
 	buf[length++] = reg[1];
 	buf[length++] = words[0];
 	buf[length++] = words[1];
-	
+
 	//CRC computation
 	CRC = rq_com_compute_crc(buf, length);
-	
+
 	//Append the crc
 	buf[length++] = (UINT_8)(CRC & 0x00FF);
 	buf[length++] = (UINT_8)(CRC >> 8);
-	
+
 	//Send the request
 	rq_com_write_port(buf, length);
 }
@@ -830,7 +830,7 @@ static INT_32 rq_com_wait_for_fc_03_echo(UINT_8 * const data)
 	UINT_16 CRC = 0;
 	INT_32 j = 0;
 	INT_32 ret = rq_com_read_port(&buf[length], MP_BUFF_SIZE - length);
-	
+
 	if(ret != -1)
 	{
 		length = length + ret;
@@ -852,9 +852,9 @@ static INT_32 rq_com_wait_for_fc_03_echo(UINT_8 * const data)
 	{
 		counter_no_new_data = 0;
 	}
-	
+
 	old_length = length;
-	
+
 	if(length > 0)
 	{
 		//If there is not enough data, return
@@ -879,7 +879,7 @@ static INT_32 rq_com_wait_for_fc_03_echo(UINT_8 * const data)
 			}
 		}
 		CRC = rq_com_compute_crc(buf, length - 2);
-		
+
 		//Verifies the crc and the slave ID
 		if(CRC != (UINT_16)((buf[length - 1] * 256) + (buf[length - 2])))
 		{
@@ -891,20 +891,20 @@ static INT_32 rq_com_wait_for_fc_03_echo(UINT_8 * const data)
 		else
 		{
 			n = buf[2];
-			
+
 			//Writes the bytes to the return buffer
 			for(j = 0; j < n; j++)
 			{
 				data[j] = buf[j + 3];
 			}
-			
+
 			//Clears the buffer
 			buf[0] = 0;
 			length = 0;
 			return n;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -931,7 +931,7 @@ static void rq_com_send_fc_16_request(INT_32 base, INT_32 n, UINT_8 const * cons
 	{
 		return;
 	}
-	
+
 	//Manage if the number of bytes to write is odd or even
 	if(n %2 != 0)
 	{
@@ -941,14 +941,14 @@ static void rq_com_send_fc_16_request(INT_32 base, INT_32 n, UINT_8 const * cons
 	{
 		n2 = n;
 	}
-	
+
 	//Split the address and the number of bytes between MSB ans LSB
 	reg[0]   = (UINT_8)(base >> 8);       //MSB to the left
 	reg[1]   = (UINT_8)(base & 0x00FF);   //LSB to the right
 	words[0] = (UINT_8)((n2/2) >> 8);     //MSB to the left
 	words[1] = (UINT_8)((n2/2) & 0x00FF); //LSB to the right
-	
-	
+
+
 	//Build the query
 	buf[length++] = 9; //slave address
 	buf[length++] = 16;
@@ -957,24 +957,24 @@ static void rq_com_send_fc_16_request(INT_32 base, INT_32 n, UINT_8 const * cons
 	buf[length++] = words[0];
 	buf[length++] = words[1];
 	buf[length++] = n2;
-	
+
 	//Copy data to the send buffer
 	for(i = 0; i < n; i++)
 	{
 		buf[length++] = data[i];
 	}
-	
+
 	if(n != n2)
 	{
 		buf[length++] = 0;
 	}
-	
+
 	CRC = rq_com_compute_crc(buf, length);
-	
+
 	//Append the crc to the query
 	buf[length++] = (UINT_8)(CRC & 0x00FF);
 	buf[length++] = (UINT_8)(CRC >> 8);
-	
+
 	//Send the query
 	rq_com_write_port(buf, length);
 }
@@ -1121,7 +1121,7 @@ float rq_com_get_received_data(UINT_8 i)
 /**
  * \brief Returns true if a new valid stream message has been decoded and
  *        is available.
- * \details When this function is called, the variable that indicates if a 
+ * \details When this function is called, the variable that indicates if a
 			new message is available is set to false even if the message
 			hasn't beed read.
  */
@@ -1143,7 +1143,7 @@ void rq_com_do_zero_force_flag()
 }
 
 /**
- * \brief close the serial port. 
+ * \brief close the serial port.
  * \warning Only valid under Windows.
  */
 void stop_connection()
@@ -1171,29 +1171,29 @@ static UINT_8 rq_com_identify_device(INT_8 const * const d_name)
 
 	fd_connexion = open(port_com, O_RDWR | O_NOCTTY | O_NDELAY | O_EXCL);
 	try {
-	    if (flock(fd_connexion, LOCK_EX|LOCK_NB) == -1) {
-	        if (errno == EWOULDBLOCK) {
-		    return 0;
-	        }
-	    }
+		if (flock(fd_connexion, LOCK_EX|LOCK_NB) == -1) {
+			if (errno == EWOULDBLOCK) {
+				return 0;
+			}
+		}
 	}
 	catch (...) {
-	    return 0;
+		return 0;
 	}
 	//The serial port is open
 	if(fd_connexion != -1)
 	{
-	    if(set_com_attribs(fd_connexion,B19200) != -1)
-	    {
+		if(set_com_attribs(fd_connexion,B19200) != -1)
+		{
 		//Try connecting to the sensor
 		if (rq_com_tentative_connexion() == 1)
 		{
-		    return 1;
+			return 1;
 		}
-	    }
-		
-	    //The device is identified, close the connection
-	    close(fd_connexion);
+		}
+
+		//The device is identified, close the connection
+		close(fd_connexion);
 	}
 
 	return 0;
