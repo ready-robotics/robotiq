@@ -194,6 +194,7 @@ int main(int argc, char **argv)
 	INT_32 publish_count = 0;
 	robotiq_force_torque_sensor::ft_sensor msgStream;
     bool connected = false;
+    uint8_t created_publishers = 0;
 
 	//If we can't initialize, we return an error
 	connected = try_connection();
@@ -214,6 +215,7 @@ int main(int argc, char **argv)
 		wrench_pub = n.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
 		watchdog_pub = n.advertise<std_msgs::Empty>("/robotiq_ft300_force_torque_sensor/watchdog", 1);
 		service = n.advertiseService("robotiq_force_torque_sensor_acc", receiverCallback);
+		created_publishers = 1;
 	}
 
 	//std_msgs::String msg;
@@ -282,5 +284,16 @@ int main(int argc, char **argv)
 	}
 
 	ROS_INFO("Sensor Stopped");
+	if (created_publishers)
+	{
+		// unregister publishers
+		sensor_pub.shutdown();
+		wrench_pub.shutdown();
+		watchdog_pub.shutdown();
+		service.shutdown();
+	}
+
+	// unregister
+	connection_pub.shutdown();
 	return 0;
 }
