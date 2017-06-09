@@ -1173,11 +1173,13 @@ static UINT_8 rq_com_identify_device(INT_8 const * const d_name)
 	try {
 		if (flock(fd_connexion, LOCK_EX|LOCK_NB) == -1) {
 			if (errno == EWOULDBLOCK) {
+				close(fd_connexion);
 				return 0;
 			}
 		}
 	}
 	catch (...) {
+		close(fd_connexion);
 		return 0;
 	}
 	//The serial port is open
