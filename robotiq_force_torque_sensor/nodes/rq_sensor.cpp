@@ -52,14 +52,12 @@
 #include "robotiq_force_torque_sensor/rq_sensor_state.h"
 #include "robotiq_force_torque_sensor/ft_sensor.h"
 #include "robotiq_force_torque_sensor/sensor_accessor.h"
-#include "bondcpp/bond.h"
 
 static void decode_message_and_do(INT_8 const  * const buff, INT_8 * const ret);
 bool wait_for_other_connection(void);
 bool try_connection(void);
 static int max_retries_(5);
 void shutdown(void);
-bond::Bond *fs_bond;
 ros::Publisher sensor_pub;
 ros::Publisher wrench_pub;
 ros::Publisher watchdog_pub;
@@ -174,17 +172,10 @@ static robotiq_force_torque_sensor::ft_sensor get_data(void)
 	return msgStream;
 }
 
-void shutdown(void) {
-    delete fs_bond;
-}
 
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "robotiq_force_torque_sensor");
-	fs_bond = new bond::Bond("/robotiq_ft300_force_torque_sensor", "robotiq_ft300_force_torque_sensor");
-    fs_bond->setBrokenCallback(&shutdown);
-    fs_bond->start();
-    fs_bond->waitUntilFormed(ros::Duration(1, 0));
 	ROS_INFO("Trying to Start Sensor");
 	ros::NodeHandle n;
 	std_msgs::Bool connection_msg;
@@ -232,8 +223,6 @@ int main(int argc, char **argv)
     {
 	    ROS_INFO("Starting Sensor");
 	}
-
-    fs_bond->breakBond();
 
 	while(ros::ok() && connected)
 	{
