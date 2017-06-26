@@ -1,3 +1,4 @@
 <launch>
-    <node name="robotiq_force_torque_sensor" type="rq_sensor" pkg="robotiq_force_torque_sensor" output="screen"/>
+  <arg name="log_output" default="log" />
+  <node name="robotiq_force_torque_sensor" type="rq_sensor" pkg="robotiq_force_torque_sensor" output="$(arg log_output)" />
 </launch>
