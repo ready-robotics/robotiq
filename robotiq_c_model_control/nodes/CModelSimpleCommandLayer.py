@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-import roslib
 import rospy
+from threading import Lock
+from std_msgs.msg import Empty
 from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
 from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
 from robotiq_c_model_control.msg import _CModel_gripper_command as commandMsg
 from robotiq_c_model_control.msg import _CModel_gripper_state as stateMsg
-roslib.load_manifest('robotiq_c_model_control')
 
 
 class gripper_control():
@@ -13,15 +13,28 @@ class gripper_control():
         self.commands_saved_ = False
         rospy.init_node('c_model_command_layer', anonymous=True)
         # Adjutant Feed Publishers
-        self.output_pub = rospy.Publisher("CModelRobotOutput", outputMsg.CModel_augmented_robot_output, queue_size=1)
-        self.state_pub = rospy.Publisher("gripper_state", stateMsg.CModel_gripper_state, queue_size=1)
+        self.output_pub = rospy.Publisher('CModelRobotOutput', outputMsg.CModel_augmented_robot_output, queue_size=1)
+        self.state_pub = rospy.Publisher('gripper_state', stateMsg.CModel_gripper_state, queue_size=1)
         # Adjutant Raw Device Subscribers
-        self.input_sub = rospy.Subscriber("CModelRobotInput", inputMsg.CModel_robot_input, self.input_cb)
-        self.command_sub = rospy.Subscriber("gripper_command", commandMsg.CModel_gripper_command, self.command_cb)
+        self.input_sub = rospy.Subscriber('CModelRobotInput', inputMsg.CModel_robot_input, self.input_cb)
+        self.command_sub = rospy.Subscriber('gripper_command', commandMsg.CModel_gripper_command, self.command_cb)
+        self.last_update = rospy.Time.now()
+        self.last_update_lock = Lock()
+        self.watchdog_sub = rospy.Subscriber('/robotiq_85mm_gripper/watchdog', Empty, self.on_watchdog_update)
         rospy.logwarn('C-Model Gripper Command Layer: Interfaces Initialized')
+
         # Start ROS Process
-        rospy.spin()
-        pass
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            with self.last_update_lock:
+                last_update = self.last_update
+            if (rospy.Time.now() - last_update).to_sec() > 2.0:
+                rospy.signal_shutdown('Did not receive update from Robotiq gripper')
+            rate.sleep()
+
+    def on_watchdog_update(self, msg):
+        with self.last_update_lock:
+            self.last_update = rospy.Time.now()
 
     def input_cb(self, input_msg):
         print input_msg

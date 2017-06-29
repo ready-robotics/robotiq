@@ -56,24 +56,10 @@ from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
 from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
 
 
-NODE_ID = 'robotiq_node'
-
-
-def mainLoop(device):
+def mainLoop(devices):
     # Gripper is a C-Model with a TCP connection
     gripper = robotiq_c_model_control.baseCModelAug.robotiqBaseCModelAug()
     gripper.client = robotiq_modbus_rtu.comModbusRtu.communication()
-
-    # We connect to the address received as an argument
-    try:
-        flag = gripper.client.connectToDevice(device)
-        if flag is False:
-            raise Exception('Could Not Connect To Device!')
-        fcntl.flock(gripper.client.client.socket, fcntl.LOCK_EX)
-    except Exception as e:
-        print "Cannot connect to gripper on this port: {}".format(e)
-        gripper.client.disconnectFromDevice()
-        raise
 
     rospy.init_node('robotiqCModel', anonymous=True)
     # The Gripper status is published on the topic named 'CModelRobotInput'
@@ -81,53 +67,60 @@ def mainLoop(device):
     watchdog_pub = rospy.Publisher('/robotiq_85mm_gripper/watchdog', Empty, queue_size=1)
     # The Gripper command is received from the topic named 'CModelRobotOutput'
     rospy.Subscriber('CModelRobotOutput', outputMsg.CModel_augmented_robot_output, gripper.refreshCommand)
+    bond = bondpy.Bond('/robotiq_85mm_gripper', 'robotiq_85mm_gripper')
+    # bond.on_broken = bond.shutdown
+    bond.start()
 
-    # We loop
-    startup = True
-    while not rospy.is_shutdown():
-
-        # Get and publish the Gripper status
+    status = None
+    connected = False
+    for device in devices:
+        # We connect to the address received as an argument
+        try:
+            flag = gripper.client.connectToDevice(device)
+            if flag is False:
+                raise Exception('Could Not Connect To Device!')
+            fcntl.flock(gripper.client.client.socket, fcntl.LOCK_EX)
+        except Exception as e:
+            rospy.logwarn('Cannot connect to gripper on this port: {}'.format(e))
+            gripper.client.disconnectFromDevice()
+            continue
+        rospy.logwarn('Device[{}] Connection: [{}]'.format(device, flag))
         try:
             status = gripper.getStatus()
         except AttributeError as ae:
-            rospy.logwarn("Tried to connect to the wrong port: {}".format(ae))
+            rospy.logwarn('Tried to connect to the wrong port: {}'.format(ae))
             fcntl.flock(gripper.client.client.socket, fcntl.LOCK_UN)
             gripper.client.disconnectFromDevice()
-            raise
+            continue
 
-        if startup:
-            bond = bondpy.Bond('/robotiq_85mm_gripper', 'robotiq_85mm_gripper')
-            bond.on_broken = bond.shutdown
-            bond.start()
+        # No exceptions means we connected to a device
+        connected = True
+        break
+
+    # Even if we cannot connect to a device we still want to connect and break the bond so the UI doesn't wait forever
+    if not rospy.is_shutdown():
+        if status is not None:
             pub.publish(status)
-            watchdog_pub.publish(Empty())
-            bond.break_bond()
-            startup = False
-        else:
-            watchdog_pub.publish(Empty())
-            pub.publish(status)
-        # Wait a little
-        # rospy.sleep(0.05)
+        watchdog_pub.publish(Empty())
+        bond.break_bond()
+
+    while not rospy.is_shutdown() and connected:
+        status = gripper.getStatus()
+        watchdog_pub.publish(Empty())
+        pub.publish(status)
 
         # Send the most recent command
         gripper.sendCommand()
 
     # Release lock on shutdown
-    fcntl.flock(gripper.client.client.socket, fcntl.LOCK_UN)
+    if connected:
+        fcntl.flock(gripper.client.client.socket, fcntl.LOCK_UN)
 
-    # Wait a little
-    # rospy.sleep(0.05)
+    return bond
 
 
 if __name__ == '__main__':
-    flag = False
-    g_port = ['/dev/ttyUSB0', '/dev/ttyUSB1']
-    for p in g_port:
-        if not flag:
-            try:
-                mainLoop(p)
-                flag = True
-            except rospy.ROSInterruptException:
-                flag = False
-            except Exception:
-                flag = False
+    ports = ['/dev/ttyUSB0', '/dev/ttyUSB1']
+    bond = mainLoop(ports)
+    if not bond.is_shutdown:
+        bond.shutdown()

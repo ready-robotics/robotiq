@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-import roslib; roslib.load_manifest('robotiq_c_model_control')
 import rospy
-
-from std_msgs.msg import String
+from threading import Lock
+from std_msgs.msg import String, Empty
 from robotiq_c_model_control.msg import _CModel_gripper_command as commandMsg
 from robotiq_c_model_control.msg import _CModel_gripper_state as stateMsg
 from robotiq_c_model_control.srv import *
@@ -24,6 +23,9 @@ class CModelControl():
         rospy.logwarn('C-Model Gripper Service Layer: Interfaces Initialized')
 
         self.state_pub = rospy.Publisher('/gripper_state', String, queue_size=1)
+        self.last_update = rospy.Time.now()
+        self.last_update_lock = Lock()
+        self.watchdog_sub = rospy.Subscriber('/robotiq_85mm_gripper/watchdog', Empty, self.on_watchdog_update)
 
         # TODO: Need to check if the com layer comes up to see if the gripper service should work
         self.last_gripper_state = None
@@ -32,9 +34,16 @@ class CModelControl():
         self.initialized = False
 
         while not rospy.is_shutdown():
+            with self.last_update_lock:
+                last_update = self.last_update
+            if (rospy.Time.now() - last_update).to_sec() > 2.0:
+                rospy.signal_shutdown('Did not receive update from Robotiq gripper')
             self.state_pub.publish(self.reported_state)
             rospy.sleep(.01)
-            pass
+
+    def on_watchdog_update(self, msg):
+        with self.last_update_lock:
+            self.last_update = rospy.Time.now()
 
     def gripper_state_cb(self, msg):
         self.last_gripper_state = msg
