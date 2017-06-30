@@ -114,7 +114,7 @@ def mainLoop(devices):
             gripper.sendCommand()
         except Exception as exc:
             gripper.client.disconnectFromDevice()
-            print(exc)
+            print('CModelRtuNodeAug: {}'.format(exc))
             break
 
     # Release lock on shutdown
@@ -131,4 +131,4 @@ if __name__ == '__main__':
         if not bond.is_shutdown:
             bond.shutdown()
     except Exception as exc:
-        print('Main loop died: {}'.format(exc))
+        print('CModelRtuNodeAug: Exited main loop due to: {}'.format(exc))
