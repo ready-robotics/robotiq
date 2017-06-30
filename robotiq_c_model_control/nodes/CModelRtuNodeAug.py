@@ -115,6 +115,7 @@ def mainLoop(devices):
         except Exception as exc:
             gripper.client.disconnectFromDevice()
             print(exc)
+            break
 
     # Release lock on shutdown
     if connected:
