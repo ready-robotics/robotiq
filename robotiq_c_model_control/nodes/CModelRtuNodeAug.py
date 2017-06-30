@@ -105,12 +105,15 @@ def mainLoop(devices):
         bond.break_bond()
 
     while not rospy.is_shutdown() and connected:
-        status = gripper.getStatus()
-        watchdog_pub.publish(Empty())
-        pub.publish(status)
+        try:
+            status = gripper.getStatus()
+            watchdog_pub.publish(Empty())
+            pub.publish(status)
 
-        # Send the most recent command
-        gripper.sendCommand()
+            # Send the most recent command
+            gripper.sendCommand()
+        except Exception as exc:
+            print(exc)
 
     # Release lock on shutdown
     if connected:
@@ -121,6 +124,9 @@ def mainLoop(devices):
 
 if __name__ == '__main__':
     ports = ['/dev/ttyUSB0', '/dev/ttyUSB1']
-    bond = mainLoop(ports)
-    if not bond.is_shutdown:
-        bond.shutdown()
+    try:
+        bond = mainLoop(ports)
+        if not bond.is_shutdown:
+            bond.shutdown()
+    except Exception as exc:
+        print('Main loop died: {}'.format(exc))
