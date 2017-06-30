@@ -113,6 +113,7 @@ def mainLoop(devices):
             # Send the most recent command
             gripper.sendCommand()
         except Exception as exc:
+            gripper.client.disconnectFromDevice()
             print(exc)
 
     # Release lock on shutdown
