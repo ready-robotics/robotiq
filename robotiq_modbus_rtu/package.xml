@@ -1,6 +1,6 @@
 <package>
   <name>robotiq_modbus_rtu</name>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <description>A stack to communicate with Robotiq grippers using the Modbus RTU protocol</description>
   <maintainer email="sedwards@swri.org">Shaun Edwards</maintainer>
   <maintainer email="kphawkins@gatech.edu">Kelsey Hawkins</maintainer>
