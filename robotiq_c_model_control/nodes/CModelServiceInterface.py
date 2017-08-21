@@ -64,8 +64,9 @@ class CModelControl():
     def service_open(self, req):
         if self.last_gripper_state is None:
             return 'FAILED - NO GRIPPER DATA'
+
         if req.wait is True:
-            if req.state is True:  # Open Gripper
+            if req.direction == req.OPEN:  # Open Gripper
                 if not self.state == 'OPEN':
                     self.open()
                     while not self.last_gripper_state.in_motion and self.last_gripper_state.at_requested_pos:
@@ -80,7 +81,7 @@ class CModelControl():
                     return 'DONE - OPEN'
                 else:
                     return 'SUCCEEDED - ALREADY OPEN'
-            else:  # Close Gripper
+            elif req.direction == req.CLOSE:  # Close Gripper
                 if not self.state == 'CLOSED':
                     self.close()
                     while not self.last_gripper_state.in_motion and self.last_gripper_state.at_requested_pos:
@@ -95,19 +96,42 @@ class CModelControl():
                     return 'DONE - CLOSED'
                 else:
                     return 'SUCCEEDED - ALREADY CLOSED'
+            else:
+                # The gripper may not close or open to the actual limits
+                if req.pos > 229:
+                    req.pos = 229
+                elif req.pos < 3:
+                    req.pos = 3
+                if self.last_gripper_state.current_pos != int(req.pos):
+                    self.custom(req.pos, req.force)
+                    while not self.last_gripper_state.in_motion and self.last_gripper_state.current_pos != int(req.pos):
+                        rospy.loginfo('waiting for motion')
+                        rospy.sleep(0.1)
+                    while self.last_gripper_state.in_motion and self.last_gripper_state.current_pos != int(req.pos):
+                        rospy.loginfo('in motion')
+                        self.reported_state = 'AT CUSTOM POSITION'
+                        rospy.sleep(0.1)
+                    rospy.sleep(0.4)
+                    return 'DONE'
+                else:
+                    return 'SUCCEEDED - ALREADY AT POSITION'
         else:
-            if req.state is True:  # Open Gripper
+            if req.direction is req.OPEN:  # Open Gripper
                 if not self.state == 'OPEN':
                     self.open()
                     return 'DONE - OPEN'
                 else:
                     return 'SUCCEEDED - ALREADY OPEN'
-            else:  # Close Gripper
+            elif req.direction == req.CLOSE:  # Close Gripper
                 if not self.state == 'CLOSED':
                     self.close()
                     return 'DONE - CLOSED'
                 else:
                     return 'SUCCEEDED - ALREADY CLOSED'
+            else:
+                # Custom position, we just go there
+                self.custom(req.pos, req.force)
+                return 'DONE'
 
     def open(self):
         bmsg = commandMsg.CModel_gripper_command()
@@ -122,6 +146,20 @@ class CModelControl():
         self.gripper_cmd_pub.publish(bmsg)
         self.state = 'OPEN'
         self.reported_state = 'OPENING'
+
+    def custom(self, pos, force):
+        bmsg = commandMsg.CModel_gripper_command()
+        bmsg.reset = False
+        bmsg.activate = False
+        bmsg.open = False
+        bmsg.close = False
+        bmsg.release = False
+        bmsg.request_pos = int(pos)
+        bmsg.speed = 255
+        bmsg.force = force
+        self.gripper_cmd_pub.publish(bmsg)
+        self.state = 'CUSTOM'
+        self.reported_state = 'CUSTOM'
 
     def reset(self):
         bmsg = commandMsg.CModel_gripper_command()
