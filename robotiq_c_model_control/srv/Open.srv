@@ -1,4 +1,10 @@
-bool state
+uint8 OPEN=0
+uint8 CLOSE=1
+uint8 CUSTOM=2
+
+uint8 direction
+uint8 pos
+uint8 force
 bool wait
 ---
 string ack
