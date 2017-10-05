@@ -1,9 +1,4 @@
 <launch>
   <arg name="log_output" default="log" />
-  <group ns="/robotiq_c_model_gripper">
-    <node pkg="robotiq_c_model_control" type="CModelRtuNodeAug.py" name="c_model_rtu_node" output="$(arg log_output)" args="/dev/ttyUSB1"/>
-    <node pkg="robotiq_c_model_control" type="CModelSimpleCommandLayer.py" name="gripper_command_layer" output="$(arg log_output)" />
-    <node pkg="robotiq_c_model_control" type="CModelServiceInterface.py" name="gripper_service_interface" output="$(arg log_output)" />
-  </group>
+  <node pkg="robotiq_c_model_control" type="robotiq_gripper_node.py" name="c_model_rtu_node" output="$(arg log_output)" />
 </launch>
-

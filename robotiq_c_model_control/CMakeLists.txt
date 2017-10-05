@@ -21,15 +21,13 @@ add_message_files(
   FILES
   CModel_robot_input.msg
   CModel_robot_output.msg
-  CModel_augmented_robot_output.msg
-  CModel_gripper_command.msg
-  CModel_gripper_state.msg
 )
 
 catkin_python_setup()
 
 generate_messages(
-	DEPENDENCIES std_msgs)
+	DEPENDENCIES std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -50,5 +48,4 @@ catkin_package(
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/groovy/api/catkin/html/adv_user_guide/variables.html
 
-install(PROGRAMS nodes/CModelSimpleController.py nodes/CModelStatusListener.py 
-    nodes/CModelTcpNode.py nodes/CModelRtuNode.py nodes/CModelRtuNodeAug.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS nodes/robotiq_gripper_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
