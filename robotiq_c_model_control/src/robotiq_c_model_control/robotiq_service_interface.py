@@ -178,7 +178,9 @@ class RobotiqServiceInterface(BaseCModel):
         if req.wait:
             self.last_goal_wait = True
             # Wait for motion
-            while not rospy.is_shutdown() and not self.interrupted:
+            start_time = rospy.Time.now()
+            # Prevent infinite blocking incase or position check has too much noise
+            while not rospy.is_shutdown() and not self.interrupted and (rospy.Time.now() - start_time).to_sec() < 0.2:
                 with self.status_cv:
                     self.status_cv.wait(0.25)
                     status = deepcopy(self.last_status)
