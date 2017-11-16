@@ -33,29 +33,24 @@
 # Copyright (c) 2012, Robotiq, Inc.
 # Revision $Id$
 
-"""@package docstring
-Module baseCModel: defines a base class for handling command and status of the Robotiq C-Model gripper. 
 
-After being instanciated, a 'client' member must be added to the object. This client depends on the communication protocol used by the Gripper. As an example, the ROS node 'CModelTcpNode.py' instanciate a robotiqBaseCModel and adds a client defined in the module comModbusTcp.
-"""
-
-from robotiq_c_model_control.msg import _CModel_robot_input as inputMsg
-from robotiq_c_model_control.msg import _CModel_augmented_robot_output as outputMsg
-from copy import deepcopy
+from robotiq_c_model_control.msg import CModel_robot_input
 
 
-class robotiqBaseCModelAug:
-    """Base class (communication protocol agnostic) for sending commands and receiving the status of the Robotic C-Model gripper"""
+class BaseCModel(object):
+    """
+        Base class (communication protocol agnostic) for sending commands and receiving the status of the
+        Robotic C-Model gripper
+    """
 
     def __init__(self):
-        # Initiate output message as an empty list
-        self.message = []
-        self.last_message = [0, 0, 0, 0, 0, 0]
-  
-        # Note: after the instantiation, a ".client" member must be added to the object
+        pass
 
-    def verifyCommand(self, command):
-        """Function to verify that the value of each variable satisfy its limits."""
+    @staticmethod
+    def verify_command(command):
+        """
+            Function to verify that the value of each variable satisfy its limits.
+        """
 
         # Verify that each variable is in its correct range
         command.rACT = max(0, command.rACT)
@@ -82,51 +77,47 @@ class robotiqBaseCModelAug:
         # Return the modified command
         return command
 
-    def refreshCommand(self, command):
+    def create_command(self, command):
         """Function to update the command which will be sent during the next sendCommand() call."""
 
         # Limit the value of each variable
-        command = self.verifyCommand(command)
+        new_cmd = self.verify_command(command)
 
         # Initiate command as an empty list
-        self.message = []
+        cmd = list()
 
         # Build the command with each output variable
         # To-Do: add verification that all variables are in their authorized range
-        self.message.append(command.rACT + (command.rGTO << 3) + (command.rATR << 4))
-        self.message.append(command.rADR)
-        self.message.append(0)
-        self.message.append(command.rPR)
-        self.message.append(command.rSP)
-        self.message.append(command.rFR)
+        cmd.append(new_cmd.rACT + (new_cmd.rGTO << 3) + (new_cmd.rATR << 4) + (new_cmd.rADR << 5))
+        cmd.append(0)
+        cmd.append(0)
+        cmd.append(new_cmd.rPR)
+        cmd.append(new_cmd.rSP)
+        cmd.append(new_cmd.rFR)
+        return cmd
 
-    def sendCommand(self):
-        """Send the command to the Gripper."""
-        msg = deepcopy(self.message)
-        if self.last_message != msg:
-            self.client.sendCommand(msg)
-            self.last_message = msg
-        '''
-        if self.last_message != self.message:
-            self.client.sendCommand(self.message)
-            self.last_message = self.message
-        '''
+    def send_command(self, command):
+        """ Send the command to the Gripper."""
+        cmd = self.create_command(command)
+        return self.comms.send_command(cmd)
 
-    def getStatus(self):
+    def get_status(self):
         """Request the status from the gripper and return it in the CModel_robot_input msg type."""
 
         # Acquire status from the Gripper
-        status = self.client.getStatus(6)
+        status = self.comms.get_status(6)
+        if not status:
+            return None
 
         # Message to output
-        message = inputMsg.CModel_robot_input()
+        message = CModel_robot_input()
 
         # Assign the values to their respective variables
         message.gACT = (status[0] >> 0) & 0x01
         message.gGTO = (status[0] >> 3) & 0x01
         message.gSTA = (status[0] >> 4) & 0x03
         message.gOBJ = (status[0] >> 6) & 0x03
-        message.gFLT = status[2]
+        message.gFLT = status[2]  # & 0xF Documentation is unclear as whether we get the second half of the byte
         message.gPR = status[3]
         message.gPO = status[4]
         message.gCU = status[5]

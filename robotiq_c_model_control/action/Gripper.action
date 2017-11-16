@@ -1,0 +1,27 @@
+# Goal
+# Directional Constants
+uint8 OPEN=0
+uint8 CLOSE=1
+uint8 CUSTOM=2
+
+# Auto Release Constants
+uint8 ENABLED=0
+uint8 DISABLED=1
+
+uint8 direction
+uint8 position
+uint8 force
+uint8 auto_release
+uint8 auto_release_direction
+bool wait
+---
+# Result
+uint8 SUCCESS=0
+uint8 FAILURE=1
+
+uint8 position
+uint8 result_code
+uint8 object_detection
+---
+# Feedback
+uint8 position
