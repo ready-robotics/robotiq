@@ -517,6 +517,7 @@ INT_8 rq_com_start_stream(void)
 			}
 
 			usleep(50000);
+			retries++;
 		}
 
 		return -1;
