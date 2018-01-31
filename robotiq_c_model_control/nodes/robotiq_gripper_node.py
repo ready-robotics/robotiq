@@ -13,6 +13,7 @@ from robotiq_c_model_control.msg import (
     CModel_robot_input,
     CModel_robot_output
 )
+from robotiq_c_model_control.srv import GetCalibrationParameters
 from robotiq_modbus_rtu.com_modbus_rtu import Communication
 from robotiq_modbus_rtu.single_com_modbus_rtu import SingleCommunication
 from robotiq_c_model_control.robotiq_gripper_action_interface import RobotiqGripperActionInterface
@@ -35,6 +36,7 @@ class RobotiqGripper(RobotiqGripperActionInterface):
         self.command_pub = None
         self.gripper_state_pub = None
         self.main_thread = None
+        self.get_calibration_parameters_srv = None
         self.status_cv = Condition(self.status_lock)
         rospy.on_shutdown(self.shutdown)
 
@@ -69,9 +71,12 @@ class RobotiqGripper(RobotiqGripperActionInterface):
                     flag = self.comms.connect_to_device(device)
                     if flag is False:
                         continue
-                    fcntl.flock(self.comms.client.socket, fcntl.LOCK_EX)
+                    if self.comms.client.socket is not None:
+                        fcntl.flock(self.comms.client.socket, fcntl.LOCK_EX)
                 except Exception as e:
                     self.__log.warn('Cannot connect to gripper on this port: {}'.format(e))
+                    if self.comms.client.socket is not None:
+                        fcntl.flock(self.comms.client.socket, fcntl.LOCK_UN)
                     self.comms.disconnect_from_device()
                     continue
                 self.__log.warn('Device[{}] Connection: [{}]'.format(device, flag))
@@ -85,7 +90,8 @@ class RobotiqGripper(RobotiqGripperActionInterface):
                         break
                 except AttributeError as ae:
                     self.__log.warn('Tried to connect to the wrong port: {}'.format(ae))
-                    fcntl.flock(self.comms.client.socket, fcntl.LOCK_UN)
+                    if self.comms.client.socket is not None:
+                        fcntl.flock(self.comms.client.socket, fcntl.LOCK_UN)
                     self.comms.disconnect_from_device()
         else:
             self.comms.connect_to_device()
@@ -107,6 +113,10 @@ class RobotiqGripper(RobotiqGripperActionInterface):
         self.command_pub = rospy.Publisher('/robotiq_input_command', CModel_robot_output, queue_size=1)
         self.gripper_state_pub = rospy.Publisher('/robotiq_state', CModel_robot_input, queue_size=1)
         self.initialize_as()
+
+    def advertise_calibration_service(self):
+        self.get_calibration_parameters_srv = rospy.Service('/robotiq/get_calibration_parameters',
+                                                            GetCalibrationParameters, self.get_calibration_parameters)
 
     def start(self):
         self.main_thread = Thread(target=self.main, name='Robotiq Main Thread')
@@ -155,6 +165,11 @@ class RobotiqGripper(RobotiqGripperActionInterface):
                 self.command_pub.unregister()
             if self.gripper_state_pub is not None:
                 self.gripper_state_pub.unregister()
+            if self.get_calibration_parameters_srv is not None:
+                self.get_calibration_parameters_srv.shutdown()
+            if isinstance(self.comms, SingleCommunication):
+                if self.comms.client.socket is not None:
+                    fcntl.flock(self.comms.client.socket, fcntl.LOCK_UN)
             self.comms.disconnect_from_device()
 
 
@@ -164,4 +179,8 @@ if __name__ == '__main__':
     gripper = RobotiqGripper(teachmate_type)
     if gripper.initialize(teachmate_type):
         gripper.start()
+        # Wait for the first reset and calibration to finish
+        while not rospy.is_shutdown() and self.resetting:
+            rospy.sleep(0.05)
+        gripper.advertise_calibration_service()
     rospy.spin()
