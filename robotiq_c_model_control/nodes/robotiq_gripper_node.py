@@ -70,9 +70,12 @@ class RobotiqGripper(RobotiqServiceInterface):
                     flag = self.comms.connect_to_device(device)
                     if flag is False:
                         continue
-                    fcntl.flock(self.comms.client.socket, fcntl.LOCK_EX)
+                    if self.comms.client.socket is not None:
+                        fcntl.flock(self.comms.client.socket, fcntl.LOCK_EX)
                 except Exception as e:
                     self.__log.warn('Cannot connect to gripper on this port: {}'.format(e))
+                    if self.comms.client.socket is not None:
+                        fcntl.flock(self.comms.client.socket, fcntl.LOCK_UN)
                     self.comms.disconnect_from_device()
                     continue
                 self.__log.warn('Device[{}] Connection: [{}]'.format(device, flag))
@@ -86,7 +89,8 @@ class RobotiqGripper(RobotiqServiceInterface):
                         break
                 except AttributeError as ae:
                     self.__log.warn('Tried to connect to the wrong port: {}'.format(ae))
-                    fcntl.flock(self.comms.client.socket, fcntl.LOCK_UN)
+                    if self.comms.client.socket is not None:
+                        fcntl.flock(self.comms.client.socket, fcntl.LOCK_UN)
                     self.comms.disconnect_from_device()
         else:
             self.comms.connect_to_device()
@@ -156,6 +160,9 @@ class RobotiqGripper(RobotiqServiceInterface):
                 self.command_pub.unregister()
             if self.gripper_state_pub is not None:
                 self.gripper_state_pub.unregister()
+            if isinstance(self.comms, SingleCommunication):
+                if self.comms.client.socket is not None:
+                    fcntl.flock(self.comms.client.socket, fcntl.LOCK_EX)
             self.comms.disconnect_from_device()
 
 
