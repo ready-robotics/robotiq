@@ -17,6 +17,11 @@ add_action_files(
   Gripper.action
 )
 
+add_service_files(
+  FILES
+  GetCalibrationParameters.srv
+)
+
 add_message_files(
   FILES
   CModel_robot_input.msg

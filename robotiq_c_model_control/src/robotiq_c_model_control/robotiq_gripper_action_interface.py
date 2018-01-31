@@ -12,6 +12,7 @@ from robotiq_c_model_control.msg import (
     GripperResult,
     CModel_robot_output
 )
+from robotiq_c_model_control.srv import GetCalibrationParametersResponse
 from robotiq_c_model_control.base_c_model import BaseCModel
 from plc_interface.base_action_server import BaseActionServer
 
@@ -319,6 +320,12 @@ class RobotiqGripperActionInterface(BaseCModel):
 
         self.has_goal = False
         self.resetting = False
+
+    def get_calibration_parameters(self, request):
+        response = GetCalibrationParametersResponse()
+        response.max_close = self.max_closed
+        response.max_open = self.max_open
+        return response
 
     def parse_cmd(self, goal):
         cmd = CModel_robot_output()
