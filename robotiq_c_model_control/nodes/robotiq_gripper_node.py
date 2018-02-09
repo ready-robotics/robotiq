@@ -180,7 +180,7 @@ if __name__ == '__main__':
     if gripper.initialize(teachmate_type):
         gripper.start()
         # Wait for the first reset and calibration to finish
-        while not rospy.is_shutdown() and self.resetting:
+        while not rospy.is_shutdown() and gripper.resetting:
             rospy.sleep(0.05)
         gripper.advertise_calibration_service()
     rospy.spin()
