@@ -175,7 +175,7 @@ class RobotiqGripper(RobotiqGripperActionInterface):
 
 if __name__ == '__main__':
     rospy.init_node('Robotiq_Gripper')
-    teachmate_type = rospy.get_param('/robot_configuration/teachmate_type', 'original')
+    teachmate_type = rospy.get_param('/teachmate_configuration/type', 'original')
     gripper = RobotiqGripper(teachmate_type)
     if gripper.initialize(teachmate_type):
         gripper.start()
