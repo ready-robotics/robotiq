@@ -253,30 +253,50 @@ class RobotiqServiceInterface(BaseCModel):
         # We recalibrate after reset to be thorough.
 
         # If we are currently executing a goal, terminate it
-        if self.has_goal:
-            self.interrupted = True
-            start_time = rospy.Time.now()
-            while self.has_goal and (rospy.Time.now() - start_time).to_sec() < 3.0:
-                rospy.sleep(0.1)
+        try:
+            if self.has_goal:
+                self.interrupted = True
+                start_time = rospy.Time.now()
+                while self.has_goal and (rospy.Time.now() - start_time).to_sec() < 3.0:
+                    rospy.sleep(0.1)
 
-        # Lock out the action server
-        self.has_goal = True
+            # Lock out the action server
+            self.has_goal = True
 
-        # First check if we were previously initialized
-        with self.status_cv:
-            self.status_cv.wait(0.25)
-            status = deepcopy(self.last_status)
-        if status.gACT == 1:
-            # Deactive Gripper
+            # First check if we were previously initialized
+            with self.status_cv:
+                self.status_cv.wait(0.25)
+                status = deepcopy(self.last_status)
+            if status.gACT == 1:
+                # Deactive Gripper
+                cmd = CModel_robot_output()
+                cmd.rACT = 0
+                self.send_gripper_command(cmd)
+                # Ensure we are in the correct state before continuing
+                while not rospy.is_shutdown() and not self.interrupted:
+                    self.__log.info("Stuck in First Loop")
+                    with self.status_cv:
+                        self.status_cv.wait(0.25)
+                        status = deepcopy(self.last_status)
+                    if status.gSTA == 0:
+                        break
+
+                if rospy.is_shutdown():
+                    self.resetting = False
+                    self.has_goal = False
+                    return
+
+            # Active Gripper
             cmd = CModel_robot_output()
-            cmd.rACT = 0
+            cmd.rACT = 1
             self.send_gripper_command(cmd)
             # Ensure we are in the correct state before continuing
             while not rospy.is_shutdown() and not self.interrupted:
+                self.__log.info("Stuck in Second Loop")
                 with self.status_cv:
                     self.status_cv.wait(0.25)
                     status = deepcopy(self.last_status)
-                if status.gSTA == 0:
+                if status.gSTA == 3:
                     break
 
             if rospy.is_shutdown():
@@ -284,63 +304,48 @@ class RobotiqServiceInterface(BaseCModel):
                 self.has_goal = False
                 return
 
-        # Active Gripper
-        cmd = CModel_robot_output()
-        cmd.rACT = 1
-        self.send_gripper_command(cmd)
-        # Ensure we are in the correct state before continuing
-        while not rospy.is_shutdown() and not self.interrupted:
+            rospy.sleep(1.0)
+            # Get Actual Calibrated Values
+            cmd = CModel_robot_output()
+            cmd.rACT = 1
+            cmd.rGTO = 1
+            cmd.rATR = 0
+            cmd.rFR = 255
+            cmd.rSP = 255
+            cmd.rPR = self.max_closed
+            if not self.send_gripper_command(cmd):
+                self.has_goal = False
+                self.resetting = False
+                rospy.signal_shutdown('Failed Close Calibration')
+                return
+
+            rospy.sleep(1.25)
             with self.status_cv:
                 self.status_cv.wait(0.25)
-                status = deepcopy(self.last_status)
-            if status.gSTA == 3:
-                break
+                self.max_closed = self.last_status.gPO
 
-        if rospy.is_shutdown():
-            self.resetting = False
-            self.has_goal = False
-            return
+            cmd = CModel_robot_output()
+            cmd.rACT = 1
+            cmd.rGTO = 1
+            cmd.rATR = 0
+            cmd.rFR = 255
+            cmd.rSP = 255
+            cmd.rPR = self.max_open
+            if not self.send_gripper_command(cmd):
+                self.has_goal = False
+                self.resetting = False
+                rospy.signal_shutdown('Failed Open Calibration')
+                return
 
-        rospy.sleep(1.0)
-        # Get Actual Calibrated Values
-        cmd = CModel_robot_output()
-        cmd.rACT = 1
-        cmd.rGTO = 1
-        cmd.rATR = 0
-        cmd.rFR = 255
-        cmd.rSP = 255
-        cmd.rPR = self.max_closed
-        if not self.send_gripper_command(cmd):
-            self.has_goal = False
-            self.resetting = False
-            rospy.signal_shutdown('Failed Close Calibration')
-            return
+            rospy.sleep(1.25)
+            with self.status_cv:
+                self.status_cv.wait(0.25)
+                self.max_open = self.last_status.gPO
 
-        rospy.sleep(1.25)
-        with self.status_cv:
-            self.status_cv.wait(0.25)
-            self.max_closed = self.last_status.gPO
-
-        cmd = CModel_robot_output()
-        cmd.rACT = 1
-        cmd.rGTO = 1
-        cmd.rATR = 0
-        cmd.rFR = 255
-        cmd.rSP = 255
-        cmd.rPR = self.max_open
-        if not self.send_gripper_command(cmd):
             self.has_goal = False
             self.resetting = False
-            rospy.signal_shutdown('Failed Open Calibration')
-            return
-
-        rospy.sleep(1.25)
-        with self.status_cv:
-            self.status_cv.wait(0.25)
-            self.max_open = self.last_status.gPO
-
-        self.has_goal = False
-        self.resetting = False
+        except Exception:
+            self.__log.info("Hit Exception")
 
     def send_gripper_command(self, cmd):
         # Send a command to the gripper. The command is sent through pymodbus to over modbus to the gripper.
