@@ -1,6 +1,6 @@
 <package>
   <name>robotiq_modbus_tcp</name>
-  <version>0.4.0</version>
+  <version>1.3.0</version>
   <description>A stack to communicate with Robotiq grippers using the Modbus TCP protocol</description>
   <maintainer email="sedwards@swri.org">Shaun Edwards</maintainer>
   <license>BSD</license>
