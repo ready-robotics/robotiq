@@ -274,7 +274,9 @@ class RobotiqGripperActionInterface(BaseCModel):
         """Create a GripperResult with the next status update.
 
         Args:
-            result_code (GripperResult): the Gripper goal result code.
+            :param result_code: the Gripper goal result code.
+            :type result_code: GripperResult code
+        Return: GripperResult based on the next received status.
         """
         with self.status_cv:
             self.status_cv.wait(0.25)
@@ -294,9 +296,11 @@ class RobotiqGripperActionInterface(BaseCModel):
         """Finish a goal that failed to complete.
 
         Args:
-            goal_handle (ServerGoalHandle): handle to notify the ActionServer
-            text (str): optional text status to be passed back to the
-                ActionServer.
+            :param goal_handle: handle to notify the ActionServer
+            :type goal_handle: ServerGoalHandle
+            :param text: optional text status to be passed back to the 
+                ActionServer
+            :type text: str
         """
         result = self.generate_grip_result(GripperResult.FAILURE)
         self.finish_goal(goal_handle, result, text)
@@ -305,10 +309,13 @@ class RobotiqGripperActionInterface(BaseCModel):
         """Finish a goal being handled with a given result.
 
         Args:
-            goal_handle (ServerGoalHandle): handle to notify the ActionServer
-            result (GripperGoal): the result of the gripper action
-            text (str): optional text status to be passed back to the
+            :param goal_handle: handle to notify the ActionServer
+            :type goal_handle: ServerGoalHandle
+            :param result: the result of the gripper action
+            :type result: GripperGoal
+            :param text: optional text status to be passed back to the
                 ActionServer.
+            :type text: str
         """
         goal_handle.set_succeeeded(result, text)
         self.set_goal_done()
@@ -317,9 +324,11 @@ class RobotiqGripperActionInterface(BaseCModel):
         """Abort a goal being handled with a given result.
 
         Args:
-            goal_handle (ServerGoalHandle): handle to notify the ActionServer
-            text (str): optional text status to be passed back to the
+            :param goal_handle: handle to notify the ActionServer
+            :type goal_handle: ServerGoalHandle
+            :param text: optional text status to be passed back to the
                 ActionServer.
+            :type text: str
         """
         result = self.generate_grip_result(GripperResult.FAILURE)
         goal_handle.set_aborted(result, text)
