@@ -27,13 +27,15 @@ fault_text = {'/0x05': 'Action delayed, activation (reactivation) must be comple
               '/0x0F': 'Automatic release completed.',
               }
 
+
 class RobotiqCommandTimeout(object):
     """Track command timeouts."""
     def __init__(self, seconds):
         """Create a command timer.
 
         Args:
-            seconds = timeout duration in seconds
+            :param seconds: timeout duration in seconds
+            :type seconds: float
         """
         super(RobotiqCommandTimeout, self).__init__()
         self.start_time = rospy.get_rostime()
@@ -66,7 +68,9 @@ class RobotiqGripperActionInterface(BaseCModel):
         """Convert Gripper response status into a string.
 
         Args:
-            status (CModel_robot_input): the status registers from the gripper.
+            :param status: the status registers from the gripper.
+            :type status: CModel_robot_input
+        Return: str
         """
         return 'gACT:{}, gGTO:{}, gSTA:{}, gOBJ:{}, ' \
                'gFLT:{}, gPR:{}, gPO:{}, gCU:{}'.format(
@@ -285,8 +289,10 @@ class RobotiqGripperActionInterface(BaseCModel):
         Send a calibration command to the gripper and wait for the next status after completion.
 
         Args:
-            direction (GripperGoal direction): gripper open/close
-            wait_seconds: time in seconds before getting a status update.
+            :param direction: gripper open/close
+            :type direction GripperGoal direction
+            :param wait_seconds: time in seconds before getting a status update.
+            :type wait_seconds: float
         Returns:
             True if command sent correctly.
         """
