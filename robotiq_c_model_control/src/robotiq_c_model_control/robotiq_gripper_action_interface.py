@@ -28,6 +28,32 @@ fault_text = {'/0x05': 'Action delayed, activation (reactivation) must be comple
               }
 
 
+class RobotiqCommandTimeout(object):
+    """Track command timeouts."""
+    def __init__(self, seconds):
+        """Create a command timer.
+
+        Args:
+            :param seconds: timeout duration in seconds
+            :type seconds: float
+        """
+        super(RobotiqCommandTimeout, self).__init__()
+        self.start_time = rospy.get_rostime()
+        self.duration = rospy.Duration(seconds)
+
+    def start(self):
+        """Start the timer."""
+        self.start_time = rospy.get_rostime()
+
+    def expired(self):
+        """Check if the timer has expired.
+
+        Returns:
+            True if timeout is expired
+        """
+        return rospy.get_rostime() - self.start_time > self.duration
+
+
 @ready_logging.logged
 class RobotiqGripperActionInterface(BaseCModel):
     has_goal_ = False
@@ -36,6 +62,27 @@ class RobotiqGripperActionInterface(BaseCModel):
     has_goal_lock = Lock()
     interrupt_lock = Lock()
     resetting_lock = Lock()
+
+    @staticmethod
+    def grip_status_to_str(status):
+        """Convert Gripper response status into a string.
+
+        Args:
+            :param status: the status registers from the gripper.
+            :type status: CModel_robot_input
+        Return: str
+        """
+        return 'gACT:{}, gGTO:{}, gSTA:{}, gOBJ:{}, ' \
+               'gFLT:{}, gPR:{}, gPO:{}, gCU:{}'.format(
+                       status.gACT,
+                       status.gGTO,
+                       status.gSTA,
+                       status.gOBJ,
+                       status.gFLT,
+                       status.gPR,
+                       status.gPO,
+                       status.gCU
+                       )
 
     @property
     def has_goal(self):
@@ -236,6 +283,31 @@ class RobotiqGripperActionInterface(BaseCModel):
         self.reset_thread = Thread(target=self.reset, name='Robotiq Gripper Reset Thread')
         self.reset_thread.start()
 
+    def do_calibration_move(self, direction=GripperGoal.OPEN, wait_seconds=1.25):
+        """Do a calibration command.
+
+        Send a calibration command to the gripper and wait for the next status after completion.
+
+        Args:
+            :param direction: gripper open/close
+            :type direction GripperGoal direction
+            :param wait_seconds: time in seconds before getting a status update.
+            :type wait_seconds: float
+        Returns:
+            True if command sent correctly.
+        """
+        goal = GripperGoal()
+        goal.force = 255
+        goal.direction = direction
+        goal.auto_release = goal.DISABLED
+        sent = self.send_gripper_command(goal)
+        if sent:
+            rospy.sleep(wait_seconds)
+            with self.status_cv:
+                self.status_cv.wait(0.25)
+                self.max_closed = self.last_status.gPO
+        return sent
+
     def reset(self):
         # Reset the gripper during startup or after a fault. A specific order of states must be sent to the gripper.
         # We recalibrate after reset to be thorough.
@@ -258,11 +330,19 @@ class RobotiqGripperActionInterface(BaseCModel):
             goal = CModel_robot_output()
             goal.rACT = 0
             self.send_gripper_command(goal, parse=False)
+
+            # Wait for the gripper to deactivate
+            timer = RobotiqCommandTimeout(seconds=3.0)
+            timer.start()
             while not rospy.is_shutdown() and not self.interrupted:
                 with self.status_cv:
                     self.status_cv.wait(0.25)
                     status = deepcopy(self.last_status)
                 if status.gSTA == 0:
+                    break
+                if timer.expired():
+                    self.__log.err('Timeout on deactivate w/ status: "{}"'.format(self.grip_status_to_str(status)))
+                    rospy.signal_shutdown('Failed to Deactivate Gripper -- timeout')
                     break
 
             if rospy.is_shutdown():
@@ -274,11 +354,19 @@ class RobotiqGripperActionInterface(BaseCModel):
         goal = CModel_robot_output()
         goal.rACT = 1
         self.send_gripper_command(goal, parse=False)
+
+        # Wait for gripper to activate
+        timer = RobotiqCommandTimeout(seconds=3.0)
+        timer.start()
         while not rospy.is_shutdown() and not self.interrupted:
             with self.status_cv:
                 self.status_cv.wait(0.25)
                 status = deepcopy(self.last_status)
             if status.gSTA == 3:
+                break
+            if timer.expired():
+                self.__log.err('Timeout on activate w/ status: "{}"'.format(self.grip_status_to_str(status)))
+                rospy.signal_shutdown('Failed to Activate Gripper -- timeout')
                 break
 
         if rospy.is_shutdown():
@@ -287,36 +375,20 @@ class RobotiqGripperActionInterface(BaseCModel):
             return
 
         rospy.sleep(1.0)
-        # Get Actual Calibrated Values
-        goal = GripperGoal()
-        goal.force = 255
-        goal.direction = goal.CLOSE
-        goal.auto_release = goal.DISABLED
-        if not self.send_gripper_command(goal):
+
+        if not self.do_calibration_move(GripperGoal.CLOSE, wait_seconds=1.25):
             self.has_goal = False
             self.resetting = False
+            self.__log.err('Could not send calibration close command.')
             rospy.signal_shutdown('Failed Close Calibration')
             return
 
-        rospy.sleep(1.25)
-        with self.status_cv:
-            self.status_cv.wait(0.25)
-            self.max_closed = self.last_status.gPO
-
-        goal = GripperGoal()
-        goal.force = 255
-        goal.direction = goal.OPEN
-        goal.auto_release = goal.DISABLED
-        if not self.send_gripper_command(goal):
+        if not self.do_calibration_move(GripperGoal.OPEN, wait_seconds=1.25):
             self.has_goal = False
             self.resetting = False
+            self.__log.err('Could not send calibration open command.')
             rospy.signal_shutdown('Failed Open Calibration')
             return
-
-        rospy.sleep(1.25)
-        with self.status_cv:
-            self.status_cv.wait(0.25)
-            self.max_open = self.last_status.gPO
 
         self.has_goal = False
         self.resetting = False
