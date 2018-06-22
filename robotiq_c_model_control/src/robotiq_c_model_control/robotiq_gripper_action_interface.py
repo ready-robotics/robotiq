@@ -317,7 +317,7 @@ class RobotiqGripperActionInterface(BaseCModel):
                 ActionServer.
             :type text: str
         """
-        goal_handle.set_succeeeded(result, text)
+        goal_handle.set_succeeded(result, text)
         self.set_goal_done()
 
     def abort_goal(self, goal_handle, text=""):
@@ -362,7 +362,10 @@ class RobotiqGripperActionInterface(BaseCModel):
             rospy.sleep(wait_seconds)
             with self.status_cv:
                 self.status_cv.wait(0.25)
-                self.max_closed = self.last_status.gPO
+                if direction == GripperGoal.OPEN:
+                    self.max_open = self.last_status.gPO
+                elif direction == GripperGoal.CLOSE:
+                    self.max_closed = self.last_status.gPO
         return sent
 
     def reset(self):
