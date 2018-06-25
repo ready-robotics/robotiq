@@ -207,7 +207,7 @@ class RobotiqGripperActionInterface(BaseCModel):
                 with self.status_cv:
                     self.status_cv.wait(0.25)
                     status = deepcopy(self.last_status)
-                if status.gOBJ == 0 or abs(status.gPO - goal.position) < 3:
+                if status.gOBJ != 3 or abs(status.gPO - goal.position) < 3:
                     break
                 if timer.expired():
                     self.__log.err('Timeout on motion start w/ status: "{}"'.format(self.grip_status_to_str(status)))
