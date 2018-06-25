@@ -193,7 +193,7 @@ class RobotiqGripperActionInterface(BaseCModel):
         result = self.send_gripper_command(goal)
         if not result:
             self.__log.err('Could not send position command.')
-            self.finish_failed_goal(gh, result, 'Communication Timed Out With Gripper')
+            self.finish_failed_goal(gh, 'Communication Timed Out With Gripper')
             return
 
         self.interrupted = False
@@ -211,11 +211,11 @@ class RobotiqGripperActionInterface(BaseCModel):
                     break
                 if timer.expired():
                     self.__log.err('Timeout on motion start w/ status: "{}"'.format(self.grip_status_to_str(status)))
-                    self.finish_failed_goal(gh, result, 'Timeout waiting for motion to start')
+                    self.finish_failed_goal(gh, 'Timeout waiting for motion to start')
                     return
 
             if rospy.is_shutdown():
-                self.finish_failed_goal(gh, result, 'ROS shutdown')
+                self.finish_failed_goal(gh, 'ROS shutdown')
                 return
 
             # Wait until we reach the desired position
