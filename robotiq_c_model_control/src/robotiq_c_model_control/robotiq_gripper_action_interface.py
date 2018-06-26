@@ -140,6 +140,11 @@ class RobotiqGripperActionInterface(BaseCModel):
             self.gripper_as_.cleanup()
         self.gripper_as_ = None
 
+    def wait_for_next_status(self, seconds=0.25):
+        with self.status_cv:
+            self.status_cv.wait(seconds)
+            return deepcopy(self.last_status)
+
     def goal_cb(self, goal_handle):
         """
             This cb handles all gripper requests from chiron, whether it be from a node or the robot_interface of the
@@ -174,9 +179,8 @@ class RobotiqGripperActionInterface(BaseCModel):
         self.has_goal = True
         goal_handle.set_accepted()
         position = self.map_position_to_calibration(goal_handle.get_goal())
-        with self.status_cv:
-            self.status_cv.wait(0.25)
-            status = deepcopy(self.last_status)
+
+        status = self.wait_for_next_status()
         if abs(status.gPO - position) < 3:
             result = GripperResult()
             result.result_code = result.SUCCESS
@@ -204,9 +208,7 @@ class RobotiqGripperActionInterface(BaseCModel):
             timer = RobotiqCommandTimeout(seconds=3.0)
             timer.start()
             while not rospy.is_shutdown() and not self.interrupted:
-                with self.status_cv:
-                    self.status_cv.wait(0.25)
-                    status = deepcopy(self.last_status)
+                status = self.wait_for_next_status()
                 if status.gOBJ != 3 or abs(status.gPO - goal.position) < 3:
                     break
                 if timer.expired():
@@ -222,9 +224,7 @@ class RobotiqGripperActionInterface(BaseCModel):
             timer = RobotiqCommandTimeout(seconds=3.0)
             timer.start()
             while not rospy.is_shutdown() and not self.interrupted:
-                with self.status_cv:
-                    self.status_cv.wait(0.25)
-                    status = deepcopy(self.last_status)
+                status = self.wait_for_next_status()
                 if status.gOBJ != 0 or abs(status.gPO - goal.position) < 3:
                     break
                 if timer.expired():
@@ -232,9 +232,7 @@ class RobotiqGripperActionInterface(BaseCModel):
                     self.finish_failed_goal(gh, 'Timeout waiting to reach desired position')
                     return
 
-            with self.status_cv:
-                self.status_cv.wait(0.25)
-                status = deepcopy(self.last_status)
+            status = self.wait_for_next_status()
             if self.interrupted or rospy.is_shutdown():
                 self.abort_goal(gh, self.get_fault_text(int(status.gFLT)))
             else:
@@ -251,11 +249,11 @@ class RobotiqGripperActionInterface(BaseCModel):
             position is set to the calibrated max_open or max_closed positions. If direction is set to CUSTOM, the
             requested positional value is checked to ensure it is within the calibration bounds.
         Args:
-            :param cmd: The requested position and direction to move the gripper.
-            :type cmd: OpenRequest
+            :param goal: The requested position and direction to move the gripper.
+            :type goal: GripperGoal
         Returns:
-            :param pos: The calibrated position to move the gripper. Values can range from 0 to 255
-            :type pos: int
+            :rparam pos: The calibrated position to move the gripper. Values can range from 0 to 255
+            :rtype pos: int
         """
         if goal.direction == goal.OPEN:
             pos = self.max_open
@@ -278,9 +276,7 @@ class RobotiqGripperActionInterface(BaseCModel):
             :type result_code: GripperResult code
         Return: GripperResult based on the next received status.
         """
-        with self.status_cv:
-            self.status_cv.wait(0.25)
-            status = deepcopy(self.last_status)
+        status = self.wait_for_next_status()
         result = GripperResult()
         result.position = status.gPO
         result.object_detection = status.gOBJ
@@ -312,7 +308,7 @@ class RobotiqGripperActionInterface(BaseCModel):
             :param goal_handle: handle to notify the ActionServer
             :type goal_handle: ServerGoalHandle
             :param result: the result of the gripper action
-            :type result: GripperGoal
+            :type result: GripperResult
             :param text: optional text status to be passed back to the
                 ActionServer.
             :type text: str
@@ -360,12 +356,11 @@ class RobotiqGripperActionInterface(BaseCModel):
         sent = self.send_gripper_command(goal)
         if sent:
             rospy.sleep(wait_seconds)
-            with self.status_cv:
-                self.status_cv.wait(0.25)
-                if direction == GripperGoal.OPEN:
-                    self.max_open = self.last_status.gPO
-                elif direction == GripperGoal.CLOSE:
-                    self.max_closed = self.last_status.gPO
+            status = self.wait_for_next_status()
+            if direction == GripperGoal.OPEN:
+                self.max_open = status.gPO
+            elif direction == GripperGoal.CLOSE:
+                self.max_closed = status.gPO
         return sent
 
     def reset(self):
@@ -382,9 +377,7 @@ class RobotiqGripperActionInterface(BaseCModel):
         self.has_goal = True
 
         # First check if we were previously initialized
-        with self.status_cv:
-            self.status_cv.wait(0.25)
-            status = deepcopy(self.last_status)
+        status = self.wait_for_next_status()
         if status.gACT == 1:
             # Deactive Gripper
             goal = CModel_robot_output()
@@ -395,9 +388,7 @@ class RobotiqGripperActionInterface(BaseCModel):
             timer = RobotiqCommandTimeout(seconds=3.0)
             timer.start()
             while not rospy.is_shutdown() and not self.interrupted:
-                with self.status_cv:
-                    self.status_cv.wait(0.25)
-                    status = deepcopy(self.last_status)
+                status = self.wait_for_next_status()
                 if status.gSTA == 0:
                     break
                 if timer.expired():
@@ -419,9 +410,7 @@ class RobotiqGripperActionInterface(BaseCModel):
         timer = RobotiqCommandTimeout(seconds=3.0)
         timer.start()
         while not rospy.is_shutdown() and not self.interrupted:
-            with self.status_cv:
-                self.status_cv.wait(0.25)
-                status = deepcopy(self.last_status)
+            status = self.wait_for_next_status()
             if status.gSTA == 3:
                 break
             if timer.expired():
