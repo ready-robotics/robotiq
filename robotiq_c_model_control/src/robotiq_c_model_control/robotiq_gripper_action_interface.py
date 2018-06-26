@@ -236,7 +236,7 @@ class RobotiqGripperActionInterface(BaseCModel):
         else:
             result = GripperResult()
             result.result_code = result.SUCCESS
-            self.goal_finished(goal_handle, result, 'Not waiting for the goal to complete.')
+            goal_handle.set_succeeded(result, 'Not waiting for the goal to complete.')
 
     def goal_finished(self, goal_handle, grip_result, text):
         self.__log.info('goal finished')
