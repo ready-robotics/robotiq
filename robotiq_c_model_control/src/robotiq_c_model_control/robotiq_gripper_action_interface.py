@@ -230,6 +230,7 @@ class RobotiqGripperActionInterface(BaseCModel):
             return
             
         if goal.wait:
+            self.last_goal_wait = True
             self.goal_thread = RobotiqGoalRunner(goal_handle, self, goal.position)
             self.goal_thread.start()
         else:
