@@ -36,6 +36,29 @@
 
 from robotiq_c_model_control.msg import CModel_robot_input
 
+class GripperStatus(CModel_robot_input):
+    FAULT_TEXT = {'/0x00': 'None',
+                  '/0x05': 'Action delayed, activation (reactivation) must be completed prior to renewed action.',
+                  '/0x07': 'The activation bit must be set prior to action.',
+                  '/0x08': 'Maximum operating temperature exceeded, wait for cool-down.',
+                  '/0x0A': 'Under minimum operating voltage.',
+                  '/0x0B': 'Automatic release in progress.',
+                  '/0x0C': 'Internal processor fault.',
+                  '/0x0D': 'Activation fault, verify that no interference or other error occurred.',
+                  '/0x0E': 'Overcurrent triggered.',
+                  '/0x0F': 'Automatic release completed.',
+                  }
+
+    def __str__(self):
+        return 'gACT:{}, gGTO:{}, gSTA:{}, gOBJ:{}, ' \
+               'gFLT:{}, gPR:{}, gPO:{}, gCU:{}'.format(
+                   self.gACT, self.gGTO, self.gSTA, self.gOBJ,
+                   self.gFLT, self.gPR, self.gPO, self.gCU
+                   )
+
+    def get_fault_text(self):
+        return GripperStatus.FAULT_TEXT.get(self.gFLT, 'Unknown fault')
+
 
 class BaseCModel(object):
     """
@@ -110,7 +133,7 @@ class BaseCModel(object):
             return None
 
         # Message to output
-        message = CModel_robot_input()
+        message = GripperStatus()
 
         # Assign the values to their respective variables
         message.gACT = (status[0] >> 0) & 0x01

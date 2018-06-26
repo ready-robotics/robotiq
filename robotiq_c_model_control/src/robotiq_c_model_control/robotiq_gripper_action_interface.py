@@ -16,17 +16,12 @@ from robotiq_c_model_control.srv import GetCalibrationParametersResponse
 from robotiq_c_model_control.base_c_model import BaseCModel
 from plc_interface.base_action_server import BaseActionServer
 
-fault_text = {'/0x05': 'Action delayed, activation (reactivation) must be completed prior to renewed action.',
-              '/0x07': 'The activation bit must be set prior to action.',
-              '/0x08': 'Maximum operating temperature exceeded, wait for cool-down.',
-              '/0x0A': 'Under minimum operating voltage.',
-              '/0x0B': 'Automatic release in progress.',
-              '/0x0C': 'Internal processor fault.',
-              '/0x0D': 'Activation fault, verify that no interference or other error occurred.',
-              '/0x0E': 'Overcurrent triggered.',
-              '/0x0F': 'Automatic release completed.',
-              }
-
+def generate_grip_result(grip_status, result_code=GripperResult.SUCCESS):
+    result = GripperResult()
+    result.position = grip_status.gPO
+    result.object_detection = grip_status.gOBJ
+    result.result_code = result_code
+    return result
 
 class RobotiqCommandTimeout(object):
     """Track command timeouts."""
@@ -55,6 +50,65 @@ class RobotiqCommandTimeout(object):
 
 
 @ready_logging.logged
+class RobotiqGoalRunner(Thread):
+    WF_START = 0
+    WF_FINISH = 1
+
+    def __init__(self, goal_handle, robotiq, target_pos):
+        self._interrupt_lock = Lock()
+        self._interrupted = False
+        super(RobotiqGoalRunner, self).__init__(self.do_goal, name='Robotiq Goal Runner', args=(goal_handle, robotiq, target_pos))
+
+    def preempt(self):
+        with self._interrupt_lock:
+            self._interrupted = True
+        self.join()
+
+    @property
+    def interrupted(self):
+        with self._interrupt_lock:
+            return self._interrupted
+
+    def is_running(self):
+        return not rospy.is_shutdown() and not self.interrupted
+
+    def do_goal(self, goal_handle, robotiq, target_pos):
+        self.__log.info('starting to do goal')
+        state = self.WF_START
+        timer = RobotiqCommandTimeout(seconds=3.0)
+        timer.start()
+
+        while self.is_running():
+            status = robotiq.wait_for_next_status()
+
+            if self.WF_START == state:
+                if status.gOBJ != 3:
+                    timer.start()
+                    self.__log.info('wait for finish')
+                    state = self.WF_FINISH
+            elif self.WF_FINISH == state:
+                if status.gOBJ != 0:
+                    self.__log.info('wrapping up')
+                    grip_result = generate_grip_result(status, GripperResult.SUCCESS)
+                    robotiq.goal_finished(goal_handle, grip_result, 'Object detected')
+                    return
+
+            if abs(status.gPO - target_pos) < 3:
+                self.__log.info('position reached')
+                grip_result = generate_grip_result(status, GripperResult.SUCCESS)
+                robotiq.goal_finished(goal_handle, grip_result, 'Reached target position')
+                return
+            elif timer.expired():
+                self.__log.err('Goal timeout w/ status: "{}"'.format(str(status)))
+                grip_result = generate_grip_result(status, GripperResult.SUCCESS)
+                robotiq.goal_finished(goal_handle, grip_result, 'Timeout!')
+                return
+
+        self.__log.info('goal aborted')
+        grip_result = generate_grip_result(GripperResult.FAILURE)
+        robotiq.goal_aborted(goal_handle, grip_result, 'Aborted with fault "{}"'.format(status.get_fault_text()))
+
+@ready_logging.logged
 class RobotiqGripperActionInterface(BaseCModel):
     has_goal_ = False
     interrupted_ = False
@@ -62,27 +116,6 @@ class RobotiqGripperActionInterface(BaseCModel):
     has_goal_lock = Lock()
     interrupt_lock = Lock()
     resetting_lock = Lock()
-
-    @staticmethod
-    def grip_status_to_str(status):
-        """Convert Gripper response status into a string.
-
-        Args:
-            :param status: the status registers from the gripper.
-            :type status: CModel_robot_input
-        Return: str
-        """
-        return 'gACT:{}, gGTO:{}, gSTA:{}, gOBJ:{}, ' \
-               'gFLT:{}, gPR:{}, gPO:{}, gCU:{}'.format(
-                       status.gACT,
-                       status.gGTO,
-                       status.gSTA,
-                       status.gOBJ,
-                       status.gFLT,
-                       status.gPR,
-                       status.gPO,
-                       status.gCU
-                       )
 
     @property
     def has_goal(self):
@@ -129,14 +162,8 @@ class RobotiqGripperActionInterface(BaseCModel):
 
     def shutdown_as(self):
         if self.gripper_as_:
-            if self.has_goal:
-                self.interrupted = True
-                if self.goal_thread:
-                    try:
-                        self.status_cv.notify_all()
-                        self.goal_thread.join(3.0)
-                    except RuntimeError:
-                        pass
+            if self.goal_thread:
+                self.goal_thread.preempt()
             self.gripper_as_.cleanup()
         self.gripper_as_ = None
 
@@ -164,84 +191,61 @@ class RobotiqGripperActionInterface(BaseCModel):
                     wait: Wait for current request to finish before executing a new request
             :type goal_handle: ServerGoalHandle
         """
-        if self.has_goal and self.last_goal_wait:
-            goal_handle.set_rejected(text='Not Accepting Multiple Goals at Once')
-            return
-        elif self.resetting:
+        if self.resetting:
             goal_handle.set_rejected(text='Gripper is Currently Resetting')
             return
-        elif self.has_goal and not self.last_goal_wait:
-            # Preempting previous goal
-            self.interrupted = True
+
+        if self.has_goal:
+            if self.last_goal_wait:
+                goal_handle.set_rejected(text='Not Accepting Multiple Goals at Once')
+                return
+
+            # Preempt the pending goal
             if self.goal_thread:
-                self.goal_thread.join()
+                self.goal_thread.preempt()
 
         self.has_goal = True
         goal_handle.set_accepted()
-        position = self.map_position_to_calibration(goal_handle.get_goal())
+        goal = goal_handle.get_goal()
+        goal.position = self.map_position_to_calibration(goal)
 
         status = self.wait_for_next_status()
-        if abs(status.gPO - position) < 3:
+        if abs(status.gPO - goal.position) < 3:
+            self.__log.info('already at target')
             result = GripperResult()
             result.result_code = result.SUCCESS
             result.position = status.gPO
             result.object_detection = status.gOBJ
-            self.finish_goal(goal_handle, result, 'Already at goal')
-        else:
-            self.goal_thread = Thread(target=self.on_goal, name='Robotiq Goal Execution', args=(goal_handle,))
-            self.goal_thread.start()
-
-    def on_goal(self, gh):
-        goal = gh.get_goal()
-        goal.position = self.map_position_to_calibration(goal)
-        result = self.send_gripper_command(goal)
-        if not result:
-            self.__log.err('Could not send position command.')
-            self.finish_failed_goal(gh, 'Communication Timed Out With Gripper')
+            self.goal_finished(goal_handle, result, 'Already at goal')
             return
 
-        self.interrupted = False
-        if goal.wait:
-            self.last_goal_wait = True
-
-            # Wait for motion
-            timer = RobotiqCommandTimeout(seconds=3.0)
-            timer.start()
-            while not rospy.is_shutdown() and not self.interrupted:
-                status = self.wait_for_next_status()
-                if status.gOBJ != 3 or abs(status.gPO - goal.position) < 3:
-                    break
-                if timer.expired():
-                    self.__log.err('Timeout on motion start w/ status: "{}"'.format(self.grip_status_to_str(status)))
-                    self.finish_failed_goal(gh, 'Timeout waiting for motion to start')
-                    return
-
-            if rospy.is_shutdown():
-                self.finish_failed_goal(gh, 'ROS shutdown')
-                return
-
-            # Wait until we reach the desired position
-            timer = RobotiqCommandTimeout(seconds=3.0)
-            timer.start()
-            while not rospy.is_shutdown() and not self.interrupted:
-                status = self.wait_for_next_status()
-                if status.gOBJ != 0 or abs(status.gPO - goal.position) < 3:
-                    break
-                if timer.expired():
-                    self.__log.err('Timeout on position goal w/ status: "{}"'.format(self.grip_status_to_str(status)))
-                    self.finish_failed_goal(gh, 'Timeout waiting to reach desired position')
-                    return
-
+        if not self.send_gripper_command(goal):
+            self.__log.err('Could not send position command.')
             status = self.wait_for_next_status()
-            if self.interrupted or rospy.is_shutdown():
-                self.abort_goal(gh, self.get_fault_text(int(status.gFLT)))
-            else:
-                result = self.generate_grip_result(GripperResult.SUCCESS)
-                self.finish_goal(gh, result, 'Succeeded')
+            result = GripperResult()
+            result.result_code = result.FAILURE
+            result.position = status.gPO
+            result.object_detection = status.gOBJ
+            self.goal_finished(goal_handle, result, 'Could not send command!')
+            return
+            
+        if goal.wait:
+            self.goal_thread = RobotiqGoalRunner(goal_handle, self, goal.position)
+            self.goal_thread.start()
         else:
             result = GripperResult()
             result.result_code = result.SUCCESS
-            self.finish_goal(gh, result)
+            self.goal_finished(goal_handle, result, 'Not waiting for the goal to complete.')
+
+    def goal_finished(self, goal_handle, grip_result, text):
+        self.__log.info('goal finished')
+        goal_handle.set_succeeded(grip_result, text)
+        self.set_goal_done()
+
+    def goal_aborted(self, goal_handle, grip_result, text):
+        self.__log.info('goal aborted')
+        goal_handle.set_aborted(grip_result, text)
+        self.set_goal_done()
 
     def map_position_to_calibration(self, goal):
         """
@@ -268,67 +272,10 @@ class RobotiqGripperActionInterface(BaseCModel):
 
         return pos
 
-    def generate_grip_result(self, result_code=GripperResult.SUCCESS):
-        """Create a GripperResult with the next status update.
-
-        Args:
-            :param result_code: the Gripper goal result code.
-            :type result_code: GripperResult code
-        Return: GripperResult based on the next received status.
-        """
-        status = self.wait_for_next_status()
-        result = GripperResult()
-        result.position = status.gPO
-        result.object_detection = status.gOBJ
-        result.result_code = result_code
-        return result
-
     def set_goal_done(self):
         """Set flags indicating that there is no pending goal."""
         self.has_goal = False
         self.last_goal_wait = False
-
-    def finish_failed_goal(self, goal_handle, text=""):
-        """Finish a goal that failed to complete.
-
-        Args:
-            :param goal_handle: handle to notify the ActionServer
-            :type goal_handle: ServerGoalHandle
-            :param text: optional text status to be passed back to the 
-                ActionServer
-            :type text: str
-        """
-        result = self.generate_grip_result(GripperResult.FAILURE)
-        self.finish_goal(goal_handle, result, text)
-
-    def finish_goal(self, goal_handle, result, text=""):
-        """Finish a goal being handled with a given result.
-
-        Args:
-            :param goal_handle: handle to notify the ActionServer
-            :type goal_handle: ServerGoalHandle
-            :param result: the result of the gripper action
-            :type result: GripperResult
-            :param text: optional text status to be passed back to the
-                ActionServer.
-            :type text: str
-        """
-        goal_handle.set_succeeded(result, text)
-        self.set_goal_done()
-
-    def abort_goal(self, goal_handle, text=""):
-        """Abort a goal being handled with a given result.
-
-        Args:
-            :param goal_handle: handle to notify the ActionServer
-            :type goal_handle: ServerGoalHandle
-            :param text: optional text status to be passed back to the
-                ActionServer.
-            :type text: str
-        """
-        result = self.generate_grip_result(GripperResult.FAILURE)
-        goal_handle.set_aborted(result, text)
-        self.set_goal_done()
 
     def reset_gripper(self):
         # If the gripper is currently running a goal we must stop it
@@ -368,10 +315,8 @@ class RobotiqGripperActionInterface(BaseCModel):
         # We recalibrate after reset to be thorough.
 
         # If we are currently executing a goal, terminate it
-        if self.has_goal:
-            self.interrupted = True
-            if self.goal_thread:
-                self.goal_thread.join()
+        if self.goal_thread:
+            self.goal_thread.preempt()
 
         # Lock out the action server
         self.has_goal = True
@@ -392,7 +337,7 @@ class RobotiqGripperActionInterface(BaseCModel):
                 if status.gSTA == 0:
                     break
                 if timer.expired():
-                    self.__log.err('Timeout on deactivate w/ status: "{}"'.format(self.grip_status_to_str(status)))
+                    self.__log.err('Timeout on deactivate w/ status: "{}"'.format(str(status)))
                     rospy.signal_shutdown('Failed to Deactivate Gripper -- timeout')
                     break
 
@@ -414,7 +359,7 @@ class RobotiqGripperActionInterface(BaseCModel):
             if status.gSTA == 3:
                 break
             if timer.expired():
-                self.__log.err('Timeout on activate w/ status: "{}"'.format(self.grip_status_to_str(status)))
+                self.__log.err('Timeout on activate w/ status: "{}"'.format(str(status)))
                 rospy.signal_shutdown('Failed to Activate Gripper -- timeout')
                 break
 
@@ -488,10 +433,3 @@ class RobotiqGripperActionInterface(BaseCModel):
             self.__log.err('Error While Sending Command [{}] - Shutting Down'.format(exc))
             rospy.signal_shutdown('Error While Sending Command - Shutting Down')
             return False
-
-    @staticmethod
-    def get_fault_text(fault_code):
-        if fault_code in fault_text:
-            return fault_text[fault_code]
-        else:
-            return 'Unknown Error Code.'
