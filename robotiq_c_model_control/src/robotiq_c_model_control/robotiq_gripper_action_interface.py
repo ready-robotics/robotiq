@@ -57,7 +57,7 @@ class RobotiqGoalRunner(Thread):
     def __init__(self, goal_handle, robotiq, target_pos):
         self._interrupt_lock = Lock()
         self._interrupted = False
-        super(RobotiqGoalRunner, self).__init__(self.do_goal, name='Robotiq Goal Runner', args=(goal_handle, robotiq, target_pos))
+        super(RobotiqGoalRunner, self).__init__(target=self.do_goal, name='Robotiq Goal Runner', args=(goal_handle, robotiq, target_pos))
 
     def preempt(self):
         with self._interrupt_lock:
