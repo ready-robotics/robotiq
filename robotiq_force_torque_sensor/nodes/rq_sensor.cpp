@@ -320,8 +320,8 @@ void launchRealSensor(ros::NodeHandle& nh)
                 wrenchMsg.wrench.torque.z = msgStream.Mz;
                 wrench_pub.publish(wrenchMsg);
 
-                if ((fabs(msgStream.Fx) == 320.0 || fabs(msgStream.Fy) >= 320.0 || fabs(msgStream.Fz) >= 320.0 ||
-                    fabs(msgStream.Mx) == 32.0 || fabs(msgStream.My) >= 32.0 || fabs(msgStream.Mz) >= 32.0) && !sensor_broken) {
+                if ((fabs(msgStream.Fx) >= 320.0 || fabs(msgStream.Fy) >= 320.0 || fabs(msgStream.Fz) >= 320.0 ||
+                    fabs(msgStream.Mx) >= 32.0 || fabs(msgStream.My) >= 32.0 || fabs(msgStream.Mz) >= 32.0) && !sensor_broken) {
                     ROS_WARN("The sensor has been pushed beyond it bounds and is broken.\nLast Date Reading, Force: [%f, %f, %f], Moment: [%f, %f, %f]", msgStream.Fx,
                         msgStream.Fy, msgStream.Fz, msgStream.Mx, msgStream.My, msgStream.Mz);
                     sensor_broken = true;
