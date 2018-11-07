@@ -19,7 +19,7 @@ add_action_files(
 
 add_service_files(
   FILES
-  GetCalibrationParameters.srv
+  GetRobotiqGripState.srv
 )
 
 add_message_files(
