@@ -34,12 +34,11 @@
 # Revision $Id$
 #
 # Modifed from the original comModbusTcp by Kelsey Hawkins @ Georgia Tech
-
-
-import rospy
 import ready_logging
+import rospy
+from actionlib import SimpleActionClient
+from actionlib_msgs.msg import GoalStatus
 from math import ceil
-from threading import Lock
 from teachmate_interface.msg import (
     ReadRegistersGoal,
     ReadRegistersAction,
@@ -47,26 +46,41 @@ from teachmate_interface.msg import (
     WriteRegistersAction
 )
 from teachmate_interface.topic_names import teachmate
-from actionlib import SimpleActionClient
-from actionlib_msgs.msg import GoalStatus
+from threading import Lock
 
 
 @ready_logging.logged
 class Communication(object):
-    def __init__(self):
+    def __init__(self, dev_id):
+        self.dev_id = dev_id
+        # All loggers automatically include the device ID
+        self.update_loggers('DEV {}: '.format(dev_id))
+
         self.read_registers_ac = None
         self.write_registers_ac = None
         self.modbus_action_lock = Lock()
         self.robotiq_id = rospy.get_param("/grippers/robotiq_id", 9)
 
-    def connect_to_device(self):
+    def update_loggers(self, prefix):
+        """ Decorate all the loggers with a given prefix. """
+        for logger in [self.__log.err, self.__log.warn, self.__log.info, self.__log.debug]:
+            logger = self.prefix_decorator(prefix, logger)
+
+    @staticmethod
+    def prefix_decorator(prefix, logger):
+        """ Decorate a function taking a string and prepend a string. """
+        def prefix_logger(msg):
+            logger(prefix + msg)
+        return prefix_logger
+
+    def connect(self):
         self.read_registers_ac = SimpleActionClient(teachmate.full_name('actions', 'READ_REGISTERS'), ReadRegistersAction)
         read_connected = self.read_registers_ac.wait_for_server(rospy.Duration(3.0))
         self.write_registers_ac = SimpleActionClient(teachmate.full_name('actions', 'WRITE_REGISTERS'), WriteRegistersAction)
         write_connected = self.write_registers_ac.wait_for_server(rospy.Duration(3.0))
         return read_connected and write_connected
 
-    def disconnect_from_device(self):
+    def disconnect(self):
         """ Close connection """
         self.__log.err('Disconnecting Robotiq')
         self.stop_action_client(self.read_registers_ac)
@@ -101,7 +115,7 @@ class Communication(object):
             return False
 
         request = WriteRegistersGoal()
-        request.slave_id = self.robotiq_id
+        request.slave_id = self.dev_id
         request.first_register = 0x03E8
         request.values = message
         with self.modbus_action_lock:
@@ -134,7 +148,7 @@ class Communication(object):
             return None
 
         request = ReadRegistersGoal()
-        request.slave_id = self.robotiq_id
+        request.slave_id = self.dev_id
         request.first_register = 0x07D0
         request.num_registers = num_regs
         with self.modbus_action_lock:

@@ -22,6 +22,11 @@ uint8 FAILURE=1
 uint8 position
 uint8 result_code
 uint8 object_detection
+
+uint8 HAS_OBJ_UNKNOWN=0
+uint8 HAS_OBJ_YES=1
+uint8 HAS_OBJ_NO=2
+uint8 has_object
 ---
 # Feedback
 uint8 position
