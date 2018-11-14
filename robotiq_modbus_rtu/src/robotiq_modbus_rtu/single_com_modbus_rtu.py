@@ -34,11 +34,27 @@
 # Revision $Id$
 #
 # Modifed from the orginal comModbusTcp by Kelsey Hawkins @ Georgia Tech
-
+import fcntl
 import ready_logging
-from pymodbus.client.sync import ModbusSerialClient
 from math import ceil
+from pymodbus.client.sync import ModbusSerialClient
 from threading import Lock
+
+
+@ready_logging.logged
+class SingleCommClient:
+    """
+    Client for communicating with a single device ID on a shared channel.
+    """
+    def __init__(self, dev_id, comm_channel):
+        self.dev_id = dev_id
+        self.comms = comm_channel
+
+    def send_command(self, data):
+        return self.comms.send_command(self.dev_id, data)
+
+    def get_status(self, num_bytes):
+        return self.comms.get_status(self.dev_id, num_bytes)
 
 
 @ready_logging.logged
@@ -47,23 +63,28 @@ class SingleCommunication:
         self.client = None
         self.modbus_comms_lock = Lock()
 
-    def connect_to_device(self, device):
+    def connect(self, device):
         """
-            Connection to the client - the method takes the IP address (as a string, e.g. '192.168.1.11') as
-            an argument.
+        Connect to the client using the system device at the provided path.
         """
         self.client = ModbusSerialClient(method='rtu', port=device, stopbits=1, bytesize=8, baudrate=115200,
                                          timeout=0.01)
-        if not self.client.connect():
+        with self.modbus_comms_lock:
+            connected = self.client.connect() and self.client.socket is not None
+        if connected:
+            fcntl.flock(self.client.socket, fcntl.LOCK_EX)
+        else:
             self.__log.warn('Unable to connect to {}'.format(device))
-            return False
-        return True
+        return connected
 
-    def disconnect_from_device(self):
+    def disconnect(self):
         """Close connection"""
-        self.client.close()
+        with self.modbus_comms_lock:
+            if self.client.socket is not None:
+                fcntl.flock(self.client.socket, fcntl.LOCK_UN)
+            self.client.close()
 
-    def send_command(self, data):
+    def send_command(self, dev_id, data):
         """
             Send a command to the Gripper - the method takes a list of uint8 as an argument. The meaning of
             each variable depends on the Gripper model (see support.robotiq.com for more details)
@@ -81,10 +102,10 @@ class SingleCommunication:
 
         # To do!: Implement try/except
         with self.modbus_comms_lock:
-            self.client.write_registers(0x03E8, message, unit=0x0009)
+            self.client.write_registers(0x03E8, message, unit=dev_id)
         return True
 
-    def get_status(self, num_bytes):
+    def get_status(self, dev_id, num_bytes):
         """
             Sends a request to read, wait for the response and returns the Gripper status. The method gets the number
             of bytes to read as an argument
@@ -94,7 +115,7 @@ class SingleCommunication:
         # To do!: Implement try/except
         # Get status from the device
         with self.modbus_comms_lock:
-            response = self.client.read_holding_registers(0x07D0, num_regs, unit=0x0009)
+            response = self.client.read_holding_registers(0x07D0, num_regs, unit=dev_id)
 
         if response is None:
             return None

@@ -1,23 +1,29 @@
-import time
-import rospy
+"""
+Copyright 2018 by READY Robotics Corporation.
+All rights reserved. No person may copy, distribute, publicly display, create derivative works from or otherwise
+use or modify this software without first obtaining a license from the READY Robotics Corporation.
+"""
 import ready_logging
-from threading import (
-    Lock,
-    Thread
-)
+import rospy
 from copy import copy
+from plc_interface.base_action_server import BaseActionServer
+from robotiq_c_model_control.base_c_model import BaseCModel
 from robotiq_c_model_control.msg import (
-    GripperGoal,
+    CModel_robot_input,
+    CModel_robot_output,
     GripperAction,
-    GripperResult,
-    CModel_robot_output
+    GripperGoal,
+    GripperResult
 )
 from robotiq_c_model_control.srv import (
     GetRobotiqGripState,
     GetRobotiqGripStateResponse
 )
-from robotiq_c_model_control.base_c_model import BaseCModel
-from plc_interface.base_action_server import BaseActionServer
+from threading import (
+    Condition,
+    Lock,
+    Thread
+)
 
 fault_text = {'/0x05': 'Action delayed, activation (reactivation) must be completed prior to renewed action.',
               '/0x07': 'The activation bit must be set prior to action.',
@@ -58,7 +64,7 @@ class RobotiqCommandTimeout(object):
 
 
 @ready_logging.logged
-class RobotiqGripperActionInterface(BaseCModel):
+class RobotiqGripperActionInterface:
     has_goal_ = False
     interrupted_ = False
     resetting_ = False
@@ -117,41 +123,70 @@ class RobotiqGripperActionInterface(BaseCModel):
         with self.resetting_lock:
             self.resetting_ = in_reset
 
-    def __init__(self):
-        super(RobotiqGripperActionInterface, self).__init__()
-        self.gripper_as_ = None
+    def __init__(self, name, comms):
+        self.cmodel = BaseCModel(comms)
+        self.name = name
+
+        self.max_closed = 255
+        self.max_open = 3
+
         self.goal_thread = None
         self.last_goal_wait = False
         self.reset_thread = None
-        self.max_closed = 255
-        self.max_open = 3
-        self.grip_state_lock_ = Lock()
-        self.grip_state_srv_ = None
+        self.gripper_as_ = BaseActionServer('{}/grip_action'.format(self.name), GripperAction, self.goal_cb, auto_start=False)
 
-    def initialize_as(self):
-        self.gripper_as_ = BaseActionServer('/robotiq_gripper_action', GripperAction, self.goal_cb, auto_start=False)
+        self.reg_status = self.cmodel.get_status()
+        self.reg_status_lock = Lock()
+        self.reg_status_cv = Condition(self.reg_status_lock)
+
+        self.grip_state = GetRobotiqGripStateResponse.UNKNOWN
+        self.grip_state_lock_ = Lock()
+        self.grip_state_srv_ = rospy.Service('{}/get_grip_state'.format(self.name), GetRobotiqGripState, self.handle_grip_state_service)
+
+        self.command_pub = rospy.Publisher('{}/input_command'.format(self.name), CModel_robot_output, queue_size=1)
+        self.reg_status_pub = rospy.Publisher('{}/state'.format(self.name), CModel_robot_input, queue_size=1)
+
+    def start(self):
         self.gripper_as_.start()
 
-    def initialize_services(self):
-        self.grip_state_srv_ = rospy.Service('/robotiq/get_grip_state', GetRobotiqGripState, self.handle_grip_state_service)
+    def shutdown(self):
+        if self.has_goal:
+            self.interrupted = True
+            # Wake anyone waiting on updated status
+            with self.reg_status_cv:
+                self.reg_status_cv.notify_all()
+            if self.goal_thread:
+                try:
+                    self.goal_thread.join(3.0)
+                except RuntimeError:
+                    pass
 
-    def shutdown_as(self):
-        if self.gripper_as_:
-            if self.has_goal:
-                self.interrupted = True
-                if self.goal_thread:
-                    try:
-                        self.status_cv.notify_all()
-                        self.goal_thread.join(3.0)
-                    except RuntimeError:
-                        pass
-            self.gripper_as_.cleanup()
-        self.gripper_as_ = None
+        self.gripper_as_.cleanup()
+
+        with self.grip_state_lock_:
+            self.grip_state_srv_.shutdown()
+
+        self.command_pub.unregister()
+        self.reg_status_pub.unregister()
+
+    def refresh_status(self):
+        """ Query the gripper status and update topics/state accordingly. """
+        status = self.cmodel.get_status()
+        if status is not None:
+            self.reg_status_pub.publish(status)
+
+            with self.reg_status_cv:
+                self.reg_status = status
+                self.reg_status_cv.notify_all()
+
+            if status.gFLT != 0 and not self.resetting:
+                self.__log.info('RESETTING Robotiq {}'.format(self.name))
+                self.reset_gripper()
 
     def wait_for_next_status(self, seconds=0.25):
-        with self.status_cv:
-            self.status_cv.wait(seconds)
-            return copy(self.last_status)
+        with self.reg_status_cv:
+            self.reg_status_cv.wait(seconds)
+            return copy(self.reg_status)
 
     def goal_cb(self, goal_handle):
         """
@@ -190,13 +225,11 @@ class RobotiqGripperActionInterface(BaseCModel):
 
         status = self.wait_for_next_status()
         if abs(status.gPO - position) < 3:
-            result = GripperResult()
-            result.result_code = result.SUCCESS
-            result.position = status.gPO
-            result.object_detection = status.gOBJ
+            result = self.generate_grip_result(status=status, result_code=GripperResult.SUCCESS)
             self.finish_goal(goal_handle, result, 'Already at goal')
         else:
-            self.goal_thread = Thread(target=self.on_goal, name='Robotiq Goal Execution', args=(goal_handle,))
+            thread_name = '{} goal executor'.format(self.name)
+            self.goal_thread = Thread(target=self.on_goal, name=thread_name, args=(goal_handle,))
             self.goal_thread.start()
 
     def on_goal(self, gh):
@@ -253,7 +286,7 @@ class RobotiqGripperActionInterface(BaseCModel):
             if self.interrupted or rospy.is_shutdown():
                 self.abort_goal(gh, self.get_fault_text(int(status.gFLT)))
             else:
-                result = self.generate_grip_result(GripperResult.SUCCESS)
+                result = self.generate_grip_result(status=status, result_code=GripperResult.SUCCESS)
                 self.finish_goal(gh, result, 'Succeeded')
         else:
             result = GripperResult()
@@ -285,7 +318,7 @@ class RobotiqGripperActionInterface(BaseCModel):
 
         return pos
 
-    def generate_grip_result(self, result_code=GripperResult.SUCCESS):
+    def generate_grip_result(self, result_code=GripperResult.SUCCESS, status=None):
         """Create a GripperResult with the next status update.
 
         Args:
@@ -293,10 +326,16 @@ class RobotiqGripperActionInterface(BaseCModel):
             :type result_code: GripperResult code
         Return: GripperResult based on the next received status.
         """
-        status = self.wait_for_next_status()
+        if status is None:
+            status = self.wait_for_next_status()
         result = GripperResult()
         result.position = status.gPO
         result.object_detection = status.gOBJ
+        if status.gGTO != 0:
+            grabbed_obj = (status.gOBJ == 1 or status.gOBJ == 2)
+            result.has_object = result.HAS_OBJ_YES if grabbed_obj else result.HAS_OBJ_NO
+        else:
+            result.has_object = result.HAS_OBJ_UKNOWN
         result.result_code = result_code
         return result
 
@@ -311,7 +350,7 @@ class RobotiqGripperActionInterface(BaseCModel):
         Args:
             :param goal_handle: handle to notify the ActionServer
             :type goal_handle: ServerGoalHandle
-            :param text: optional text status to be passed back to the 
+            :param text: optional text status to be passed back to the
                 ActionServer
             :type text: str
         """
@@ -487,24 +526,18 @@ class RobotiqGripperActionInterface(BaseCModel):
         else:
             cmd.rFR = int(goal.force)
 
-        self.command_pub.publish(cmd)
         return cmd
 
     def send_gripper_command(self, goal, parse=True):
         try:
             if parse:
                 goal = self.parse_cmd(goal)
-            return self.send_command(goal)
+            self.command_pub.publish(goal)
+            return self.cmodel.send_command(goal)
         except Exception as exc:
             self.__log.err('Error While Sending Command [{}] - Shutting Down'.format(exc))
             rospy.signal_shutdown('Error While Sending Command - Shutting Down')
             return False
-
-    def shutdown_grip_state_service(self):
-        with self.grip_state_lock_:
-            if self.grip_state_srv_ is not None:
-                self.grip_state_srv_.shutdown()
-                self.grip_state_srv_ = None
 
     def handle_grip_state_service(self, request):
         with self.grip_state_lock_:
@@ -533,9 +566,9 @@ class RobotiqGripperActionInterface(BaseCModel):
                 else:
                     # Gripper is either moving or performing a reset. Use the last
                     # known state.
-                    resp.state = self._prev_grip_state
+                    resp.state = self.grip_state
 
-            self._prev_grip_state = resp.state
+            self.grip_state = resp.state
         return resp
 
     @staticmethod
