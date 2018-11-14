@@ -34,12 +34,11 @@
 # Revision $Id$
 #
 # Modifed from the original comModbusTcp by Kelsey Hawkins @ Georgia Tech
-
-
-import rospy
 import ready_logging
+import rospy
+from actionlib import SimpleActionClient
+from actionlib_msgs.msg import GoalStatus
 from math import ceil
-from threading import Lock
 from teachmate_interface.msg import (
     ReadRegistersGoal,
     ReadRegistersAction,
@@ -47,17 +46,28 @@ from teachmate_interface.msg import (
     WriteRegistersAction
 )
 from teachmate_interface.topic_names import teachmate
-from actionlib import SimpleActionClient
-from actionlib_msgs.msg import GoalStatus
+from threading import Lock
+
+
+def logger_prefix(logger, prefix):
+    def wrapper(msg, **kwargs):
+        logger(prefix + msg)
+    return wrapper
 
 
 @ready_logging.logged
 class Communication(object):
-    def __init__(self):
+    def __init__(self, dev_id):
+        self.dev_id = dev_id
+
+        # Prefix all logging with the device ID
+        prefix = 'DEV {}: '.format(dev_id)
+        for logger in (self.__log.err, self.__log.warn, self.__log.info, self.__log.debug):
+            logger = logger_prefix(logger, prefix)
+
         self.read_registers_ac = None
         self.write_registers_ac = None
         self.modbus_action_lock = Lock()
-        self.robotiq_id = rospy.get_param("/grippers/robotiq_id", 9)
 
     def connect_to_device(self):
         self.read_registers_ac = SimpleActionClient(teachmate.full_name('actions', 'READ_REGISTERS'), ReadRegistersAction)
@@ -66,7 +76,7 @@ class Communication(object):
         write_connected = self.write_registers_ac.wait_for_server(rospy.Duration(3.0))
         return read_connected and write_connected
 
-    def disconnect_from_device(self):
+    def disconnect(self):
         """ Close connection """
         self.__log.err('Disconnecting Robotiq')
         self.stop_action_client(self.read_registers_ac)
@@ -82,7 +92,7 @@ class Communication(object):
 
     def send_command(self, data):
         """
-            Send a command to the Gripper - the method takes a list of uint8 as an argument.
+        Send a command to the Gripper - the method takes a list of uint8 as an argument.
             The meaning of each variable depends on the Gripper model (see support.robotiq.com for more details)
         """
         # make sure data has an even number of elements
@@ -101,7 +111,7 @@ class Communication(object):
             return False
 
         request = WriteRegistersGoal()
-        request.slave_id = self.robotiq_id
+        request.slave_id = self.dev_id
         request.first_register = 0x03E8
         request.values = message
         with self.modbus_action_lock:
@@ -134,7 +144,7 @@ class Communication(object):
             return None
 
         request = ReadRegistersGoal()
-        request.slave_id = self.robotiq_id
+        request.slave_id = self.dev_id
         request.first_register = 0x07D0
         request.num_registers = num_regs
         with self.modbus_action_lock:
