@@ -9,7 +9,7 @@ ORIGINAL = 'original'
 MODBUS = 'modbus'
 
 # The device IDs where we expect to find grippers on the MODBUS
-VALID_DEVICE_IDS = [ROBOTIQ_ID]
+VALID_DEVICE_IDS = (ROBOTIQ_ID, 15)
 
 # The maximum number of grippers that can run simultaneously in this node
-MAX_GRIPPER_COUNT = 4
+MAX_GRIPPER_COUNT = 2
