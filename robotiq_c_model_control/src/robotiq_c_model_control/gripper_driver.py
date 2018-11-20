@@ -5,7 +5,6 @@ use or modify this software without first obtaining a license from the READY Rob
 """
 import ready_logging
 import rospy
-from robotiq_c_model_control.attachment_session import AttachmentSession
 from robotiq_c_model_control.base_c_model import BaseCModel
 from robotiq_c_model_control.constants import (
     MAX_GRIPPER_COUNT,
@@ -54,37 +53,19 @@ class GripperDriver(object):
         rospy.on_shutdown(self.shutdown)
 
     def detect(self, modbus_ids):
-        """
-        Attempt to detect specified devices on the MODBUS.
-
-            The AttachmentSession synchronizes the launching of this attachment
-            with ready_runtime_manager. The attachment manager will not
-            progress until the detection is complete.
-        """
-        # TODO
-        # Should the attachment session be held until all the grippers are
-        # connected and reset?
-        with AttachmentSession('/robotiq_85mm_gripper', 'robotiq_85mm_gripper'):
-            return self._detect(modbus_ids)
+        """ Attempt to detect specified devices on the MODBUS. """
+        return self._detect(modbus_ids)
 
     def _detect(self, modbus_ids):
         """ The child specific implementation of gripper detection. """
         raise NotImplementedError('Child must override _detect')
 
     def autodetect(self, find_count=None):
-        """
-        Attempt to autodetect the number of grippers specified.
-
-            The AttachmentSession synchronizes the launching of this attachment
-            with ready_runtime_manager. The attachment manager will not
-            progress until the detection is complete.
-        """
+        """ Attempt to autodetect the number of grippers specified. """
         if find_count is None or \
            not 1 <= find_count <= MAX_GRIPPER_COUNT:
             find_count = MAX_GRIPPER_COUNT
-
-        with AttachmentSession('/robotiq_85mm_gripper', 'robotiq_85mm_gripper'):
-            return self._autodetect(find_count)
+        return self._autodetect(find_count)
 
     def _autodetect(self, find_count):
         """ The child specific implementation of gripper autodetection. """
@@ -110,21 +91,16 @@ class GripperDriver(object):
 
     def _start(self):
         """ The child specific implementation for starting the node. """
-        raise NotImplementedError('Child must override _autodetect')
+        raise NotImplementedError('Child must override _start')
 
     def shutdown(self):
-        """ The child specific implementation for shutting down the node. """
+        """ Shutdown the ROS node. """
         self._shutdown()
 
     def _shutdown(self):
         """ The child specific implementation for starting the node. """
-        raise NotImplementedError('Child must override _autodetect')
+        raise NotImplementedError('Child must override _shutdown')
 
-    def start_service(self):
-        pass
-
-    def get_grip_count_cb(self):
-        self._num_grippers
 
 @ready_logging.logged
 class SerialGripperDriver(GripperDriver):
@@ -218,10 +194,6 @@ class SerialGripperDriver(GripperDriver):
         if self.comm_channel is not None:
             self.comm_channel.disconnect()
 
-    @property
-    def _num_grippers(self):
-        return len(self.grippers)
-
 
 @ready_logging.logged
 class TeachmateGripperDriver(GripperDriver):
@@ -288,7 +260,3 @@ class TeachmateGripperDriver(GripperDriver):
 
         for comms in self.clients:
             comms.disconnect()
-
-    @property
-    def _num_grippers(self):
-        return len(self.grippers)
