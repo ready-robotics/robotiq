@@ -1,0 +1,4 @@
+<launch>
+  <arg name="log_output" default="log" />
+  <node pkg="robotiq_c_model_control" type="dual_gripper_node.py" name="dual_rtu_node" output="$(arg log_output)" />
+</launch>
