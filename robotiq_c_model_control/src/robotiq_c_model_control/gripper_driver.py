@@ -122,8 +122,8 @@ class SerialGripperDriver(GripperDriver):
         Try to detect grippers using the USB to RS-485 converter at the
         specified path.
         """
-        comm_channel = SingleCommunication(dev_path)
-        if not comm_channel.connect():
+        comm_channel = SingleCommunication()
+        if not comm_channel.connect(dev_path):
             self.__log.warn('{}: Could not connect'.format(dev_path))
             return False
 
@@ -134,7 +134,7 @@ class SerialGripperDriver(GripperDriver):
         all_detected = True
         for dev_id in modbus_ids:
             comm_client = SingleCommClient(dev_id, comm_channel)
-            dev_clients += comm_client
+            dev_clients.append(comm_client)
             if not self._is_gripper_attached(dev_id, comm_client):
                 all_detected = False
                 break
@@ -156,8 +156,8 @@ class SerialGripperDriver(GripperDriver):
         Try to detect grippers using the USB to RS-485 converter at the
         specified path.
         """
-        comm_channel = SingleCommunication(dev_path)
-        if not comm_channel.connect():
+        comm_channel = SingleCommunication()
+        if not comm_channel.connect(dev_path):
             self.__log.warn('{}: Could not connect'.format(dev_path))
             return False
 
@@ -167,7 +167,7 @@ class SerialGripperDriver(GripperDriver):
         dev_clients = []
         for dev_id in VALID_DEVICE_IDS:
             comm_client = SingleCommClient(dev_id, comm_channel)
-            dev_clients += comm_client
+            dev_clients.append(comm_client)
             if self._is_gripper_attached(dev_id, comm_client):
                 self.__log.info('Autodetected {}'.format(dev_id))
                 find_count -= 1
