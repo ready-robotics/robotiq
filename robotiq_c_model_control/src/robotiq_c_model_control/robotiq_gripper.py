@@ -32,8 +32,8 @@ class RobotiqGripper(object):
 
     def refresh_loop(self):
         """
-        Continually query the state of the state of the gripper. If a fault is
-        detected, reset the gripper and its calibration.
+        Continually query the state of the state of the gripper and publish
+        watchdog messages.
         """
         acquisition_rate = rospy.Rate(10)
         while not rospy.is_shutdown():
