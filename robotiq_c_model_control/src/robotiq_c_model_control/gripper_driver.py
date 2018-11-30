@@ -23,10 +23,7 @@ from robotiq_modbus_rtu.single_com_modbus_rtu import (
 
 @ready_logging.logged
 class GripperDriver(object):
-    """
-    ROS Node interface for running multiple Robotiq grippers on the same
-    communication interface.
-    """
+    """ Driver for running multiple Robotiq grippers on the same MODBUS. """
     @staticmethod
     def activate(grippers):
         """ Activate all the provided grippers simultaneously. """
@@ -104,9 +101,7 @@ class GripperDriver(object):
 
 @ready_logging.logged
 class SerialGripperDriver(GripperDriver):
-    """
-    ROS Node for running Robotiq grippers on a USB to RS-485 converter.
-    """
+    """ Driver for running multiple Robotiq grippers on the same USB to RS-485 converter. """
     DEVICES = ['/dev/ttyUSB0', '/dev/ttyUSB1']
 
     def __init__(self):
@@ -197,9 +192,7 @@ class SerialGripperDriver(GripperDriver):
 
 @ready_logging.logged
 class TeachmateGripperDriver(GripperDriver):
-    """
-    ROS Node for running Robotiq grippers connected to the Teachmate MODBUS.
-    """
+    """ Driver for running multiple Robotiq grippers on the Teachmate MODBUS. """
     def __init__(self):
         super(TeachmateGripperDriver, self).__init__()
         self.grippers = []

@@ -65,6 +65,7 @@ class RobotiqCommandTimeout(object):
 
 @ready_logging.logged
 class RobotiqGripperActionInterface:
+    """ ROS Interface for interacting with a Robotiq Gripper """
     has_goal_ = False
     interrupted_ = False
     resetting_ = False
