@@ -15,8 +15,7 @@ from threading import (
 
 @ready_logging.logged
 class RobotiqGripper(object):
-    """ Interface to the gripper as required by the ROS node executable. """
-
+    """ Gripper interface for a GripperDriver. """
     def __init__(self, name, comms):
         self.grip_interface = RobotiqGripperActionInterface(name, comms)
 
