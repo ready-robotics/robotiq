@@ -68,7 +68,11 @@ class RobotiqGripper(object):
         try:
             self.refresh_thread.join()
         except RuntimeError as exc:
-            self.__log.error('{} join failed: {}'.format(self.refresh_thread.name, exc))
+            # The call to rospy.signal_shutdown in refresh_loop will result in
+            # a call to this method which attempts to join the currently
+            # executing thread. We catch that exception and ignore it because
+            # we know the thread is aborting immediately after this call
+            pass
 
         # Shutdown ROS topics
         self.grip_interface.shutdown()
