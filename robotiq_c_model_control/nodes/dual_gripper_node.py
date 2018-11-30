@@ -1,9 +1,12 @@
+#!/usr/bin/env python
 """
 Copyright 2018 by READY Robotics Corporation.
 All rights reserved. No person may copy, distribute, publicly display, create derivative works from or otherwise
 use or modify this software without first obtaining a license from the READY Robotics Corporation.
 """
+import errno
 import rospy
+import sys
 from robotiq_c_model_control.attachment_session import AttachmentSession
 from robotiq_c_model_control.constants import (
     MODBUS,
@@ -31,7 +34,7 @@ def main():
     with AttachmentSession('/robotiq_dual_gripper', 'robotiq_dual_gripper'):
         if not driver.detect(VALID_DEVICE_IDS):
             rospy.logerr('Failed to detect a gripper')
-            exit(-1)
+            sys.exit(errno.ENXIO)
 
         driver.start()
 
