@@ -162,8 +162,8 @@ class SerialGripperDriver(GripperDriver):
         dev_clients = []
         for dev_id in VALID_DEVICE_IDS:
             comm_client = SingleCommClient(dev_id, comm_channel)
-            dev_clients.append(comm_client)
             if self._is_gripper_attached(dev_id, comm_client):
+                dev_clients.append(comm_client)
                 self.__log.info('Autodetected {}'.format(dev_id))
                 find_count -= 1
                 if find_count == 0:
