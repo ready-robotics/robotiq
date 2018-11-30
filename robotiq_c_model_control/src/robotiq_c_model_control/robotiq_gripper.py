@@ -5,7 +5,7 @@ use or modify this software without first obtaining a license from the READY Rob
 """
 import ready_logging
 import rospy
-from robotiq_c_model_control.robotiq_gripper_action_interface import RobotiqGripperActionInterface
+from robotiq_c_model_control.robotiq_gripper_ros_interface import RobotiqGripperROSInterface
 from std_msgs.msg import Empty
 from threading import (
     Lock,
@@ -17,7 +17,7 @@ from threading import (
 class RobotiqGripper(object):
     """ Gripper interface for a GripperDriver. """
     def __init__(self, name, comms):
-        self.grip_interface = RobotiqGripperActionInterface(name, comms)
+        self.grip_interface = RobotiqGripperROSInterface(name, comms)
 
         self.terminate_lock = Lock()
         self.terminate = False
