@@ -91,8 +91,6 @@ class Communication(object):
     @staticmethod
     def stop_action_client(ac):
         ac.cancel_all_goals()
-        ac.action_client.pub_goal.unregister()
-        ac.action_client.pub_cancel.unregister()
 
     def send_command(self, data):
         """
