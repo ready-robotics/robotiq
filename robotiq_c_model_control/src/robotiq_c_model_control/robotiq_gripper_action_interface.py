@@ -12,7 +12,10 @@ from robotiq_c_model_control.msg import (
     GripperResult,
     CModel_robot_output
 )
-from robotiq_c_model_control.srv import GetCalibrationParametersResponse
+from robotiq_c_model_control.srv import (
+    GetRobotiqGripState,
+    GetRobotiqGripStateResponse
+)
 from robotiq_c_model_control.base_c_model import BaseCModel
 from plc_interface.base_action_server import BaseActionServer
 
@@ -122,10 +125,15 @@ class RobotiqGripperActionInterface(BaseCModel):
         self.reset_thread = None
         self.max_closed = 255
         self.max_open = 3
+        self.grip_state_lock_ = Lock()
+        self.grip_state_srv_ = None
 
     def initialize_as(self):
         self.gripper_as_ = BaseActionServer('/robotiq_gripper_action', GripperAction, self.goal_cb, auto_start=False)
         self.gripper_as_.start()
+
+    def initialize_services(self):
+        self.grip_state_srv_ = rospy.Service('/robotiq/get_grip_state', GetRobotiqGripState, self.handle_grip_state_service)
 
     def shutdown_as(self):
         if self.gripper_as_:
@@ -451,12 +459,6 @@ class RobotiqGripperActionInterface(BaseCModel):
         self.has_goal = False
         self.resetting = False
 
-    def get_calibration_parameters(self, request):
-        response = GetCalibrationParametersResponse()
-        response.max_close = self.max_closed
-        response.max_open = self.max_open
-        return response
-
     def parse_cmd(self, goal):
         cmd = CModel_robot_output()
 
@@ -497,6 +499,44 @@ class RobotiqGripperActionInterface(BaseCModel):
             self.__log.err('Error While Sending Command [{}] - Shutting Down'.format(exc))
             rospy.signal_shutdown('Error While Sending Command - Shutting Down')
             return False
+
+    def shutdown_grip_state_service(self):
+        with self.grip_state_lock_:
+            if self.grip_state_srv_ is not None:
+                self.grip_state_srv_.shutdown()
+                self.grip_state_srv_ = None
+
+    def handle_grip_state_service(self, request):
+        with self.grip_state_lock_:
+            resp = GetRobotiqGripStateResponse()
+            if self.resetting:
+                resp.state = resp.UNKNOWN
+            else:
+                registers = self.wait_for_next_status()
+                moved = registers.gGTO != 0
+                if moved and registers.gOBJ == 1:
+                    # Fingers stopped due to contact while opening
+                    resp.state = GetRobotiqGripStateResponse.OPEN
+                elif moved and registers.gOBJ == 2:
+                    # Fingers stopped due to contact while closing
+                    resp.state = GetRobotiqGripStateResponse.CLOSED
+                elif moved and registers.gOBJ == 3:
+                    # Fingers moved to the requested position without detecting an
+                    # object. Use the gripper position to determine the current
+                    # grip state.
+                    position = int(registers.gPO)
+                    position_median = abs(self.max_closed - self.max_open) / 2
+                    if position < position_median:
+                        resp.state = GetRobotiqGripStateResponse.OPEN
+                    else:
+                        resp.state = GetRobotiqGripStateResponse.CLOSED
+                else:
+                    # Gripper is either moving or performing a reset. Use the last
+                    # known state.
+                    resp.state = self._prev_grip_state
+
+            self._prev_grip_state = resp.state
+        return resp
 
     @staticmethod
     def get_fault_text(fault_code):
