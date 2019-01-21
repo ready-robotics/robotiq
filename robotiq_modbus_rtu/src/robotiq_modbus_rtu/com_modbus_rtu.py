@@ -60,9 +60,9 @@ class Communication(object):
 
     def connect_to_device(self):
         self.read_registers_ac = SimpleActionClient('/teachmate_comms/read_registers', ReadRegistersAction)
-        read_connected = self.read_registers_ac.wait_for_server(rospy.Duration(0, 500000000))
+        read_connected = self.read_registers_ac.wait_for_server(rospy.Duration(3.0))
         self.write_registers_ac = SimpleActionClient('/teachmate_comms/write_registers', WriteRegistersAction)
-        write_connected = self.write_registers_ac.wait_for_server(rospy.Duration(0, 500000000))
+        write_connected = self.write_registers_ac.wait_for_server(rospy.Duration(3.0))
         return read_connected and write_connected
 
     def disconnect_from_device(self):
@@ -95,7 +95,7 @@ class Communication(object):
         for i in range(0, len(data) / 2):
             message.append((data[2 * i] << 8) + data[2 * i + 1])
 
-        if not self.write_registers_ac.wait_for_server(rospy.Duration(0, 600000000)):
+        if not self.write_registers_ac.wait_for_server(rospy.Duration(3.0)):
             self.__log.err('Teachmate Modbus Communications could not be contacted!')
             return False
 
@@ -106,7 +106,7 @@ class Communication(object):
         with self.modbus_action_lock:
             self.write_registers_ac.send_goal(request)
 
-            if not self.write_registers_ac.wait_for_result(rospy.Duration(1, 500000000)):
+            if not self.write_registers_ac.wait_for_result(rospy.Duration(3.0)):
                 self.__log.err('Timed Out While Sending Command')
                 return False
 
@@ -124,7 +124,7 @@ class Communication(object):
         """
         num_regs = int(ceil(num_bytes / 2.0))
 
-        if not self.read_registers_ac.wait_for_server(rospy.Duration(1, 0)):
+        if not self.read_registers_ac.wait_for_server(rospy.Duration(3.0)):
             self.__log.err('Teachmate Modbus Communications could not be contacted!')
             return None
 
@@ -139,7 +139,7 @@ class Communication(object):
         with self.modbus_action_lock:
             self.read_registers_ac.send_goal(request)
 
-            if not self.read_registers_ac.wait_for_result(rospy.Duration(1, 500000000)):
+            if not self.read_registers_ac.wait_for_result(rospy.Duration(3.0)):
                 self.__log.err('Timed Out on Response')
                 return None
 
