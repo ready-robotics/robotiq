@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>robotiq_ethercat</name>
-  <version>1.5.4</version>
+  <version>1.5.5</version>
   <description>
     <p>
       ROS-Industrial support stack for facilitating communication with EtherCAT networks.
