@@ -60,9 +60,10 @@ class Communication(object):
 
     def connect_to_device(self):
         self.read_registers_ac = SimpleActionClient('/teachmate_comms/read_registers', ReadRegistersAction)
-        self.read_registers_ac.wait_for_server(rospy.Duration(3.0))
+        read_connected = self.read_registers_ac.wait_for_server(rospy.Duration(3.0))
         self.write_registers_ac = SimpleActionClient('/teachmate_comms/write_registers', WriteRegistersAction)
-        self.write_registers_ac.wait_for_server(rospy.Duration(3.0))
+        write_connected = self.write_registers_ac.wait_for_server(rospy.Duration(3.0))
+        return read_connected and write_connected
 
     def disconnect_from_device(self):
         """ Close connection """
