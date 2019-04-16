@@ -135,7 +135,7 @@ class RobotiqGripper(RobotiqGripperActionInterface):
                     if status.gFLT != 0 and not self.resetting:
                         self.__log.info('RESETTING Robotiq Gripper')
                         self.reset_gripper()
-                self.watchdog_pub.publish(Empty())
+                    self.watchdog_pub.publish(Empty())
                 acquisition_rate.sleep()
             except Exception as exc:
                 self.__log.error('CModelRtuNode: {}'.format(exc))
