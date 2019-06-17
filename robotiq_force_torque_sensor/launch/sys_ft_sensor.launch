@@ -1,0 +1,14 @@
+<!--
+  Copyright 2019 by READY Robotics Corporation.
+  All rights reserved. No person may copy, distribute, publicly display, create derivative works from or otherwise
+  use or modify this software without first obtaining a license from the READY Robotics Corporation.
+  -->
+<launch>
+  <arg name="sensor_id" default="A" />
+  <arg name="log_output" default="log" />
+
+  <node name="robotiq_ft300_sensor_$(arg sensor_id)" pkg="robotiq_force_torque_sensor" type="rq_sensor" output="$(arg log_output)">
+    <remap from="/robotiq_force_torque_wrench" to="force_torque/sensor/$(arg sensor_id)/wrench" />
+    <remap from="/robotiq_ft300_force_torque_sensor/watchdog" to="force_torque/sensor/$(arg sensor_id)/watchdog" />
+  </node>
+</launch>

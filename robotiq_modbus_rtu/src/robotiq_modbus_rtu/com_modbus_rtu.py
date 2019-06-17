@@ -40,7 +40,7 @@ import rospy
 import ready_logging
 from math import ceil
 from threading import Lock
-from teachmate.msg import (
+from teachmate_interface.msg import (
     ReadRegistersGoal,
     ReadRegistersAction,
     WriteRegistersGoal,
@@ -48,7 +48,6 @@ from teachmate.msg import (
 )
 from actionlib import SimpleActionClient
 from actionlib_msgs.msg import GoalStatus
-from teachmate.modbus_constants import ROBOTIQ_ID
 
 
 @ready_logging.logged
@@ -57,6 +56,7 @@ class Communication(object):
         self.read_registers_ac = None
         self.write_registers_ac = None
         self.modbus_action_lock = Lock()
+        self.robotiq_id = rospy.get_param("/grippers/robotiq_id", 9)
 
     def connect_to_device(self):
         self.read_registers_ac = SimpleActionClient('/teachmate_comms/read_registers', ReadRegistersAction)
@@ -100,7 +100,7 @@ class Communication(object):
             return False
 
         request = WriteRegistersGoal()
-        request.slave_id = ROBOTIQ_ID
+        request.slave_id = self.robotiq_id
         request.first_register = 0x03E8
         request.values = message
         with self.modbus_action_lock:
@@ -133,7 +133,7 @@ class Communication(object):
             return None
 
         request = ReadRegistersGoal()
-        request.slave_id = ROBOTIQ_ID
+        request.slave_id = self.robotiq_id
         request.first_register = 0x07D0
         request.num_registers = num_regs
         with self.modbus_action_lock:
