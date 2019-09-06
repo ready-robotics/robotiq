@@ -46,6 +46,7 @@ from teachmate_interface.msg import (
     WriteRegistersGoal,
     WriteRegistersAction
 )
+from teachmate_interface.topic_names import teachmate
 from actionlib import SimpleActionClient
 from actionlib_msgs.msg import GoalStatus
 
@@ -59,9 +60,9 @@ class Communication(object):
         self.robotiq_id = rospy.get_param("/grippers/robotiq_id", 9)
 
     def connect_to_device(self):
-        self.read_registers_ac = SimpleActionClient('/teachmate_comms/read_registers', ReadRegistersAction)
+        self.read_registers_ac = SimpleActionClient(teachmate.full_name('actions', 'READ_REGISTERS'), ReadRegistersAction)
         read_connected = self.read_registers_ac.wait_for_server(rospy.Duration(3.0))
-        self.write_registers_ac = SimpleActionClient('/teachmate_comms/write_registers', WriteRegistersAction)
+        self.write_registers_ac = SimpleActionClient(teachmate.full_name('actions', 'WRITE_REGISTERS'), WriteRegistersAction)
         write_connected = self.write_registers_ac.wait_for_server(rospy.Duration(3.0))
         return read_connected and write_connected
 
