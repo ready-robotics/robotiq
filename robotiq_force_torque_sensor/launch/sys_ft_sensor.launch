@@ -11,6 +11,6 @@
   <node name="robotiq_ft300_sensor_$(arg sensor_id)" pkg="robotiq_force_torque_sensor" type="rq_sensor" output="$(arg log_output)">
     <remap from="/robotiq_force_torque_wrench" to="force_torque/sensor/$(arg sensor_id)/wrench" />
     <remap from="/robotiq_ft300_force_torque_sensor/watchdog" to="force_torque/sensor/$(arg sensor_id)/watchdog" />
-    <param name="launch_status_topic" value="$(arg launch_status_topic)"/>
+    <param name="launch_status_topic" value="$(arg launch_status_topic)" />
   </node>
 </launch>
