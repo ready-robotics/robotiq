@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(robotiq_force_torque_sensor)
 
-# "-Werror" removed since the code originates as thrid party and can't compile with it added
+# "-Werror" removed since the code originates as third party and can't compile with it added
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_STANDARD 11)
@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   bondcpp
+  launch_manager_interface
   std_msgs
   message_generation
 )
@@ -40,7 +41,10 @@ generate_messages(
 ## catkin specific configuration ##
 ###################################
 catkin_package(
-  CATKIN_DEPENDS message_runtime std_msgs
+  CATKIN_DEPENDS
+    message_runtime
+    std_msgs
+    launch_manager_interface
 )
 
 ###########

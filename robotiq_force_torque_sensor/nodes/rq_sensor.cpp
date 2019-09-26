@@ -53,6 +53,7 @@
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
 #include "std_msgs/String.h"
+#include <launch_manager_interface/optional_comm_channel.hpp>
 
 class SensorBase
 {
@@ -111,6 +112,12 @@ private:
 class SimulatedSensor : public SensorBase
 {
 public:
+    SimulatedSensor()
+        : // Keep publishing rate to 100Hz
+          _throttle(100)
+    {
+    }
+
     bool makeConnection() override
     {
         setConnection(true);
@@ -126,13 +133,15 @@ private:
         msgStream.Mx = 0.0;
         msgStream.My = 0.0;
         msgStream.Mz = 0.0;
-        // Keep publishing rate to 100Hz
-        ros::Duration(0.01).sleep();
+
+        _throttle.sleep();
         return true;
     }
+
     void _decodeMessageAndDo(INT_8 const *const /*buff*/, INT_8 *const /*ret*/) override
     {
     }
+    ros::Rate _throttle;
 };
 
 class RealSensor : public SensorBase
@@ -296,9 +305,11 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "robotiq_force_torque_sensor");
 
     std::unique_ptr<SensorBase> sensor_ptr;
+    OptionalCommChannel launch_control_link(true);
 
-    bool simulated;
-    ros::param::param<bool>("/simulate_robot", simulated, false);
+    bool simulated = ros::param::param<bool>("/simulate_robot", false);
+    launch_control_link.send_pending();
+
     if (simulated) {
         ROS_INFO("Trying to Start Simulated Robotiq Sensor");
         sensor_ptr.reset(new SimulatedSensor);
@@ -311,6 +322,12 @@ int main(int argc, char **argv)
     uint32_t publish_count = 0;
 
     sensor_ptr->Connect();
+    if (!sensor_ptr->isConnected()) {
+        launch_control_link.send_failure();
+        return -1;
+    }
+    launch_control_link.send_normal();
+
     while (ros::ok() && sensor_ptr->isConnected()) {
         sensor_ptr->publishSensor();
 
