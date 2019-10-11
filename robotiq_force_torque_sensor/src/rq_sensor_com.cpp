@@ -583,7 +583,7 @@ static INT_8 rq_com_send_fc_16(INT_32 base, INT_32 n, UINT_16 const * const data
 	INT_8 valid_answer = 0;
 	UINT_8 data_request[n];
 	UINT_16 retries = 0;
-	UINT_32 i;
+	INT_32 i;
 
 	//precondition, null pointer
 	if (data == NULL)
@@ -1111,7 +1111,7 @@ bool rq_com_get_valid_stream()
  */
 float rq_com_get_received_data(UINT_8 i)
 {
-	if(i >= 0 && i <= 5)
+	if(i <= 5)
 	{
 		return rq_com_received_data[i] - rq_com_received_data_offset[i];
 	}
