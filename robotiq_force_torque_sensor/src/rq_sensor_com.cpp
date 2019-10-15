@@ -157,7 +157,7 @@ INT_8 rq_sensor_com()
 	while ((entrydirectory = readdir(dir)) != NULL && device_found == 0)
 	{
 		//Look for a serial device
-		if (strstr(entrydirectory->d_name, "ttyUSB")
+		if (strstr(entrydirectory->d_name, "ttyUSB"))
 		{
 			device_found = rq_com_identify_device(entrydirectory->d_name);
 		}
