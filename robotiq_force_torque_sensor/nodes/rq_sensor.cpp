@@ -126,7 +126,7 @@ bool wait_for_other_connection(void)
         {
             ROS_INFO("Waiting for sensor connection...");
         }
-        usleep(10000); //Attend 1 seconde.
+        usleep(1000000); //Attend 1 seconde.
 
         ret = rq_sensor_state(max_retries_);
         if(ret == 0)
