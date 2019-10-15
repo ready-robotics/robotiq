@@ -120,7 +120,7 @@ bool wait_for_other_connection(void)
     INT_8 ret;
     INT_8 count = 0;
 
-    while(ros::ok() && count < 6)
+    while(ros::ok() && count < 12)
     {
         if (count % 2 == 0)
         {
