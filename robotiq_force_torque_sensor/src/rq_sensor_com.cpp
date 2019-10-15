@@ -157,8 +157,7 @@ INT_8 rq_sensor_com()
 	while ((entrydirectory = readdir(dir)) != NULL && device_found == 0)
 	{
 		//Look for a serial device
-		if (strstr(entrydirectory->d_name, "ttyS") ||
-			strstr(entrydirectory->d_name, "ttyUSB"))
+		if (strstr(entrydirectory->d_name, "ttyUSB")
 		{
 			device_found = rq_com_identify_device(entrydirectory->d_name);
 		}
@@ -1171,7 +1170,6 @@ static UINT_8 rq_com_identify_device(INT_8 const * const d_name)
 	strcat(dirParent, d_name);
 	strcpy(port_com, dirParent);
 
-    ROS_INFO("Attempting to identify device on: %s", port_com);
 	fd_connexion = open(port_com, O_RDWR | O_NOCTTY | O_NDELAY | O_EXCL);
 	if (flock(fd_connexion, LOCK_EX|LOCK_NB) == -1) {
 		if (errno == EWOULDBLOCK) {
@@ -1183,12 +1181,12 @@ static UINT_8 rq_com_identify_device(INT_8 const * const d_name)
 	//The serial port is open
 	if(fd_connexion != -1)
 	{
-    	ROS_INFO("Locked: %s", port_com);
 		if(set_com_attribs(fd_connexion,B19200) != -1)
 		{
 		//Try connecting to the sensor
 		if (rq_com_tentative_connexion() == 1)
 		{
+    		ROS_INFO("Found: %s", port_com);
 			return 1;
 		}
 		}
