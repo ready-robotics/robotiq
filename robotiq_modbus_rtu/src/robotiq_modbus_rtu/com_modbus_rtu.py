@@ -51,7 +51,7 @@ from threading import Lock
 
 def logger_prefix(logger, prefix):
     def wrapper(msg, **kwargs):
-        logger(prefix + msg)
+        logger(prefix + msg, **kwargs)
     return wrapper
 
 

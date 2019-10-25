@@ -25,16 +25,17 @@ from threading import (
     Thread
 )
 
-fault_text = {'/0x05': 'Action delayed, activation (reactivation) must be completed prior to renewed action.',
-              '/0x07': 'The activation bit must be set prior to action.',
-              '/0x08': 'Maximum operating temperature exceeded, wait for cool-down.',
-              '/0x0A': 'Under minimum operating voltage.',
-              '/0x0B': 'Automatic release in progress.',
-              '/0x0C': 'Internal processor fault.',
-              '/0x0D': 'Activation fault, verify that no interference or other error occurred.',
-              '/0x0E': 'Overcurrent triggered.',
-              '/0x0F': 'Automatic release completed.',
-              }
+FAULT_TEXT_MAP = {
+    '/0x05': 'Action delayed, activation (reactivation) must be completed prior to renewed action.',
+    '/0x07': 'The activation bit must be set prior to action.',
+    '/0x08': 'Maximum operating temperature exceeded, wait for cool-down.',
+    '/0x0A': 'Under minimum operating voltage.',
+    '/0x0B': 'Automatic release in progress.',
+    '/0x0C': 'Internal processor fault.',
+    '/0x0D': 'Activation fault, verify that no interference or other error occurred.',
+    '/0x0E': 'Overcurrent triggered.',
+    '/0x0F': 'Automatic release completed.',
+}
 
 
 class RobotiqCommandTimeout(object):
@@ -574,7 +575,4 @@ class RobotiqGripperROSInterface:
 
     @staticmethod
     def get_fault_text(fault_code):
-        if fault_code in fault_text:
-            return fault_text[fault_code]
-        else:
-            return 'Unknown Error Code.'
+        return FAULT_TEXT_MAP.get(fault_code, 'Unknown Error Code: {}'.format(fault_code))

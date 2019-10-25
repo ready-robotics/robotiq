@@ -5,6 +5,7 @@ use or modify this software without first obtaining a license from the READY Rob
 """
 from string import ascii_lowercase
 
+
 def gripper_name_generator():
     """
     Generate valid gripper names

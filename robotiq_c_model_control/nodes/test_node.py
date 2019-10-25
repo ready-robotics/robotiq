@@ -11,6 +11,7 @@ from robotiq_c_model_control.msg import (
 )
 from ready_debug_tools import ipdb_helpers
 
+
 def main():
     rospy.init_node('dual_gripper_test_node')
 
@@ -169,6 +170,7 @@ def main():
     rospy.loginfo(result)
 
     raw_input("Press enter to continue...")
+
 
 if __name__ == '__main__':
     main()

@@ -18,6 +18,7 @@ from robotiq_c_model_control.gripper_driver import (
     TeachmateGripperDriver
 )
 
+
 def main():
     """ Launch a ROS node controlling 2 grippers. """
     rospy.init_node('robotiq_dual_gripper')
@@ -39,6 +40,7 @@ def main():
         driver.start()
 
     rospy.spin()
+
 
 if __name__ == '__main__':
     main()

@@ -102,7 +102,7 @@ class GripperDriver(object):
 @ready_logging.logged
 class SerialGripperDriver(GripperDriver):
     """ Driver for running multiple Robotiq grippers on the same USB to RS-485 converter. """
-    DEVICES = ['/dev/ttyUSB0', '/dev/ttyUSB1']
+    DEVICES = ('/dev/ttyUSB0', '/dev/ttyUSB1')
 
     def __init__(self):
         super(SerialGripperDriver, self).__init__()
