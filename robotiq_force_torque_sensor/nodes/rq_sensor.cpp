@@ -31,6 +31,7 @@
 * POSSIBILITY OF SUCH DAMAGE.
 *
 * Copyright (c) 2014, Robotiq, Inc
+* Modifications Copyright (c) 2017 READY Robotics
 */
 
 /**
@@ -48,10 +49,12 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
+#include <launch_manager_interface/optional_comm_channel.hpp>
 #include "geometry_msgs/WrenchStamped.h"
 #include "robotiq_force_torque_sensor/rq_sensor_state.h"
 #include "robotiq_force_torque_sensor/ft_sensor.h"
 #include "robotiq_force_torque_sensor/sensor_accessor.h"
+
 
 static void decode_message_and_do(INT_8 const  * const buff, INT_8 * const ret);
 bool wait_for_other_connection(void);
@@ -176,6 +179,8 @@ static robotiq_force_torque_sensor::ft_sensor get_data(void)
 
 void simulateSensor(ros::NodeHandle& nh) 
 {
+    OptionalCommChannel launch_control_link(true);
+    launch_control_link.send_pending();
     ros::Publisher connection_pub = nh.advertise<std_msgs::Bool>("robotiq_force_torque_sensor_connected", 1);
     sensor_pub = nh.advertise<robotiq_force_torque_sensor::ft_sensor>("robotiq_force_torque_sensor", 512);
     wrench_pub = nh.advertise<geometry_msgs::WrenchStamped>("robotiq_force_torque_wrench", 512);
@@ -210,6 +215,8 @@ void simulateSensor(ros::NodeHandle& nh)
     wrenchMsg.wrench.torque.y = msgStream.My;
     wrenchMsg.wrench.torque.z = msgStream.Mz;
 
+
+    launch_control_link.send_normal();
     while(ros::ok()) {
         sensor_pub.publish(msgStream);
         wrenchMsg.header.stamp = ros::Time::now();
@@ -249,6 +256,8 @@ void simulateSensor(ros::NodeHandle& nh)
 
 void launchRealSensor(ros::NodeHandle& nh)
 {
+    OptionalCommChannel launch_control_link(true);
+    launch_control_link.send_pending();
     std_msgs::Bool connection_msg;
     ros::param::param<int>("~max_retries", max_retries_, 100);
 
@@ -293,6 +302,10 @@ void launchRealSensor(ros::NodeHandle& nh)
     if (connected)
     {
         ROS_INFO("Starting Sensor");
+        launch_control_link.send_normal();
+    }
+    else {
+        launch_control_link.send_failure();
     }
 
     while(ros::ok() && connected)
