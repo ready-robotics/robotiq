@@ -7,10 +7,10 @@ import ready_logging
 import rospy
 from robotiq_c_model_control.base_c_model import BaseCModel
 from robotiq_c_model_control.constants import (
+    DEFAULT_DEVICE_IDS,
     MAX_GRIPPER_COUNT,
     MODBUS,
-    ORIGINAL,
-    VALID_DEVICE_IDS
+    ORIGINAL
 )
 from robotiq_c_model_control.robotiq_gripper import RobotiqGripper
 from robotiq_c_model_control.util import gripper_name_generator
@@ -57,14 +57,14 @@ class GripperDriver(object):
         """ The child specific implementation of gripper detection. """
         raise NotImplementedError('Child must override _detect')
 
-    def autodetect(self, find_count=None):
+    def autodetect(self, supported_device_ids, find_count=None):
         """ Attempt to autodetect the number of grippers specified. """
         if find_count is None or \
            not 1 <= find_count <= MAX_GRIPPER_COUNT:
             find_count = MAX_GRIPPER_COUNT
-        return self._autodetect(find_count)
+        return self._autodetect(supported_device_ids, find_count)
 
-    def _autodetect(self, find_count):
+    def _autodetect(self, supported_device_ids, find_count):
         """ The child specific implementation of gripper autodetection. """
         raise NotImplementedError('Child must override _autodetect')
 
@@ -143,8 +143,8 @@ class SerialGripperDriver(GripperDriver):
             comm_channel.disconnect()
             return False
 
-    def _autodetect(self, find_count):
-        return any(self._autodetect_grippers_with_dev(dev, find_count) for dev in self.DEVICES)
+    def _autodetect(self, supported_device_ids, find_count):
+        return any(self._autodetect_grippers_with_dev(dev, supported_device_ids, find_count) for dev in self.DEVICES)
 
     def _autodetect_grippers_with_dev(self, dev_path, find_count):
         """
@@ -225,8 +225,8 @@ class TeachmateGripperDriver(GripperDriver):
         self.grippers = self.build_grippers(self.clients)
         return True
 
-    def _autodetect(self, find_count):
-        for dev_id in VALID_DEVICE_IDS:
+    def _autodetect(self, supported_device_ids, find_count):
+        for dev_id in supported_device_ids:
             comms = Communication(dev_id)
             if self._detect_gripper_with_comms(dev_id, comms):
                 self.clients.append(comms)

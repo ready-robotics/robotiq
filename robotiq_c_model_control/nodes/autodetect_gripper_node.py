@@ -9,6 +9,7 @@ import rospy
 import sys
 from robotiq_c_model_control.attachment_session import AttachmentSession
 from robotiq_c_model_control.constants import (
+    DEFAULT_DEVICE_IDS,
     MODBUS,
     ORIGINAL
 )
@@ -25,13 +26,15 @@ def main():
     teachmate_type = rospy.get_param('/teachmate_configuration/type', ORIGINAL)
     driver = TeachmateGripperDriver() if teachmate_type == MODBUS else SerialGripperDriver()
 
+    supported_device_ids = rospy.get_param('/grippers/robotiq/supported_ids', DEFAULT_DEVICE_IDS)
+
     rospy.loginfo('Attempting to autodetect a gripper')
 
     # AttachmentSession synchronizes the launching of this attachment with
     # ready_runtime_manager. The attachment manager will not progress until the
     # detection is complete.
     with AttachmentSession('/robotiq_single_gripper', 'robotiq_single_gripper'):
-        if not driver.autodetect(find_count=1):
+        if not driver.autodetect(supported_device_ids, find_count=1):
             rospy.logerr('Failed to detect a gripper')
             sys.exit(errno.ENXIO)
 
