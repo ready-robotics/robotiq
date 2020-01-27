@@ -49,24 +49,16 @@ class GripperDriver(object):
     def __init__(self):
         rospy.on_shutdown(self.shutdown)
 
-    def detect(self, modbus_ids):
-        """ Attempt to detect specified devices on the MODBUS. """
-        return self._detect(modbus_ids)
-
-    def _detect(self, modbus_ids):
-        """ The child specific implementation of gripper detection. """
-        raise NotImplementedError('Child must override _detect')
-
-    def autodetect(self, find_count=None):
+    def autodetect(self, modbus_ids, find_count=None):
         """ Attempt to autodetect the number of grippers specified. """
         if find_count is None or \
            not 1 <= find_count <= MAX_GRIPPER_COUNT:
             find_count = MAX_GRIPPER_COUNT
-        return self._autodetect(find_count)
+        return self._autodetect(modbus_ids, find_count)
 
-    def _autodetect(self, find_count):
+    def _autodetect(self, modbus_ids, find_count):
         """ The child specific implementation of gripper autodetection. """
-        raise NotImplementedError('Child must override _autodetect')
+        raise NotImplementedError
 
     def _is_gripper_attached(self, dev_id, comms):
         """
@@ -88,7 +80,7 @@ class GripperDriver(object):
 
     def _start(self):
         """ The child specific implementation for starting the node. """
-        raise NotImplementedError('Child must override _start')
+        raise NotImplementedError
 
     def shutdown(self):
         """ Shutdown the ROS node. """
@@ -96,7 +88,7 @@ class GripperDriver(object):
 
     def _shutdown(self):
         """ The child specific implementation for starting the node. """
-        raise NotImplementedError('Child must override _shutdown')
+        raise NotImplementedError
 
 
 @ready_logging.logged
@@ -109,13 +101,13 @@ class SerialGripperDriver(GripperDriver):
         self.grippers = []
         self.comm_channel = None
 
-    def _detect(self, modbus_ids):
-        return any(self._detect_grippers_with_dev(dev, modbus_ids) for dev in self.DEVICES)
+    def _autodetect(self, modbus_ids, find_count):
+        return any(self._autodetect_grippers_with_dev(dev, modbus_ids, find_count) for dev in self.DEVICES)
 
-    def _detect_grippers_with_dev(self, dev_path, modbus_ids):
+    def _autodetect_grippers_with_dev(self, dev_path, modbus_ids, find_count):
         """
-        Try to detect grippers using the USB to RS-485 converter at the
-        specified path.
+        Try to autodetect @a find_count grippers using the USB to RS-485 converter at the
+        specified @a dev_path.
         """
         comm_channel = SingleCommunication()
         if not comm_channel.connect(dev_path):
@@ -126,41 +118,7 @@ class SerialGripperDriver(GripperDriver):
 
         # Scan for grippers attached at all dev_ids
         dev_clients = []
-        all_detected = True
         for dev_id in modbus_ids:
-            comm_client = SingleCommClient(dev_id, comm_channel)
-            dev_clients.append(comm_client)
-            if not self._is_gripper_attached(dev_id, comm_client):
-                all_detected = False
-                break
-
-        if all_detected:
-            self.__log.info('All grippers detected!')
-            self.comm_channel = comm_channel
-            self.grippers = self.build_grippers(dev_clients)
-            return True
-        else:
-            comm_channel.disconnect()
-            return False
-
-    def _autodetect(self, find_count):
-        return any(self._autodetect_grippers_with_dev(dev, find_count) for dev in self.DEVICES)
-
-    def _autodetect_grippers_with_dev(self, dev_path, find_count):
-        """
-        Try to detect grippers using the USB to RS-485 converter at the
-        specified path.
-        """
-        comm_channel = SingleCommunication()
-        if not comm_channel.connect(dev_path):
-            self.__log.warn('{}: Could not connect'.format(dev_path))
-            return False
-
-        self.__log.info('{}: Comms connected'.format(dev_path))
-
-        # Scan for grippers attached at all dev_ids
-        dev_clients = []
-        for dev_id in VALID_DEVICE_IDS:
             comm_client = SingleCommClient(dev_id, comm_channel)
             if self._is_gripper_attached(dev_id, comm_client):
                 dev_clients.append(comm_client)
@@ -214,28 +172,9 @@ class TeachmateGripperDriver(GripperDriver):
 
         return self._is_gripper_attached(dev_id, comms)
 
-    def _detect(self, modbus_ids):
-        """
-        Attempt to detect all the specified grippers.
-
-            Each gripper communicates using its own unique client.
-        """
+    def _autodetect(self, modbus_ids, find_count):
         comm_clients = []
         for dev_id in modbus_ids:
-            comms = Communication(dev_id)
-            comm_clients.append(comms)
-            if not self._detect_gripper_with_comms(dev_id, comms):
-                self._disconnect_comms(comm_clients)
-                return False
-
-        self.__log.info('All grippers detected!')
-        self.clients = comm_clients
-        self.grippers = self.build_grippers(self.clients)
-        return True
-
-    def _autodetect(self, find_count):
-        comm_clients = []
-        for dev_id in VALID_DEVICE_IDS:
             comms = Communication(dev_id)
             if self._detect_gripper_with_comms(dev_id, comms):
                 comm_clients.append(comms)

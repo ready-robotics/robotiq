@@ -6,35 +6,37 @@ use or modify this software without first obtaining a license from the READY Rob
 """
 import errno
 import rospy
-import sys
 from robotiq_c_model_control.attachment_session import AttachmentSession
 from robotiq_c_model_control.constants import (
     MODBUS,
-    ORIGINAL,
-    VALID_DEVICE_IDS
+    ORIGINAL
 )
 from robotiq_c_model_control.gripper_driver import (
     SerialGripperDriver,
     TeachmateGripperDriver
 )
+from robotiq_c_model_control.params import get_supported_modbus_ids
+
 
 def main():
     """ Launch a ROS node controlling 2 grippers. """
     rospy.init_node('robotiq_dual_gripper')
+    rospy.loginfo('Launched dual robotiq gripper node.')
 
     teachmate_type = rospy.get_param('/teachmate_configuration/type', ORIGINAL)
     driver = TeachmateGripperDriver() if teachmate_type == MODBUS else SerialGripperDriver()
 
-    id_str = ', '.join(str(id) for id in VALID_DEVICE_IDS)
-    rospy.loginfo('Attempting to detect grippers w/IDs: {}'.format(id_str))
+    modbus_ids = get_supported_modbus_ids()
+    id_str = ', '.join(str(id) for id in modbus_ids)
+    rospy.loginfo('Supported MODBUS IDs: {}'.format(id_str))
 
     # AttachmentSession synchronizes the launching of this attachment with
     # ready_runtime_manager. The attachment manager will not progress until the
     # detection is complete.
     with AttachmentSession('/robotiq_dual_gripper', 'robotiq_dual_gripper'):
-        if not driver.detect(VALID_DEVICE_IDS):
+        if not driver.autodetect(modbus_ids, find_count=2):
             rospy.logerr('Failed to detect a gripper')
-            sys.exit(errno.ENXIO)
+            return errno.ENXIO
 
         driver.start()
 
