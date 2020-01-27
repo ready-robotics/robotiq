@@ -1,8 +1,6 @@
-"""
-Copyright 2018 by READY Robotics Corporation.
-All rights reserved. No person may copy, distribute, publicly display, create derivative works from or otherwise
-use or modify this software without first obtaining a license from the READY Robotics Corporation.
-"""
+# Copyright 2018 by READY Robotics Corporation.
+# All rights reserved. No person may copy, distribute, publicly display, create derivative works from or otherwise
+# use or modify this software without first obtaining a license from the READY Robotics Corporation.
 from bondpy import bondpy
 
 
