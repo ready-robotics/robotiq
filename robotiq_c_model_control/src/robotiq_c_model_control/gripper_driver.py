@@ -9,8 +9,7 @@ from robotiq_c_model_control.base_c_model import BaseCModel
 from robotiq_c_model_control.constants import (
     MAX_GRIPPER_COUNT,
     MODBUS,
-    ORIGINAL,
-    DEFAULT_MODBUS_IDS
+    ORIGINAL
 )
 from robotiq_c_model_control.robotiq_gripper import RobotiqGripper
 from robotiq_c_model_control.util import gripper_name_generator
