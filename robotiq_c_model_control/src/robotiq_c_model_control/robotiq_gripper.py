@@ -8,7 +8,7 @@ import rospy
 from robotiq_c_model_control.robotiq_gripper_ros_interface import RobotiqGripperROSInterface
 from std_msgs.msg import Empty
 from threading import (
-    Lock,
+    Event,
     Thread
 )
 
@@ -19,8 +19,7 @@ class RobotiqGripper(object):
     def __init__(self, name, comms):
         self.grip_interface = RobotiqGripperROSInterface(name, comms)
 
-        self.terminate_lock = Lock()
-        self.terminate = False
+        self.terminate = Event()
         self.refresh_thread = Thread(target=self.refresh_loop, name='{} refresh loop'.format(name))
 
         self.watchdog_pub = rospy.Publisher('{}/watchdog'.format(name), Empty, queue_size=1)
@@ -39,10 +38,9 @@ class RobotiqGripper(object):
         while not rospy.is_shutdown():
 
             # Check to see if the thread needs to stop
-            with self.terminate_lock:
-                if self.terminate:
-                    self.__log.info('{} terminated'.format(self.refresh_thread.name))
-                    return
+            if self.terminate.is_set():
+                self.__log.info('{} terminated'.format(self.refresh_thread.name))
+                return
 
             try:
                 self.grip_interface.refresh_status()
@@ -63,8 +61,7 @@ class RobotiqGripper(object):
     def shutdown(self):
         """ Shutdown the ROS interfaces. """
         # Notify the thread to shutdown and wait for it to shutdown
-        with self.terminate_lock:
-            self.terminate = True
+        self.terminate.set()
         try:
             self.refresh_thread.join()
         except RuntimeError as exc:
