@@ -7,7 +7,7 @@ ORIGINAL = 'original'
 MODBUS = 'modbus'
 
 # The slave/device IDs where we expect to find grippers on the MODBUS
-VALID_DEVICE_IDS = (9, 15)
+DEFAULT_MODBUS_IDS = (9, 15)
 
 # The maximum number of grippers that can run simultaneously in this node
 MAX_GRIPPER_COUNT = 2
