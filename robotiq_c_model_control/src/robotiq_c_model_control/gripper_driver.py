@@ -193,6 +193,11 @@ class SerialGripperDriver(GripperDriver):
 @ready_logging.logged
 class TeachmateGripperDriver(GripperDriver):
     """ Driver for running multiple Robotiq grippers on the Teachmate MODBUS. """
+    @staticmethod
+    def _disconnect_comms(comms):
+        for client in comms:
+            client.disconnect()
+
     def __init__(self):
         super(TeachmateGripperDriver, self).__init__()
         self.grippers = []
@@ -215,21 +220,25 @@ class TeachmateGripperDriver(GripperDriver):
 
             Each gripper communicates using its own unique client.
         """
+        comm_clients = []
         for dev_id in modbus_ids:
             comms = Communication(dev_id)
-            self.clients.append(comms)
+            comm_clients.append(comms)
             if not self._detect_gripper_with_comms(dev_id, comms):
+                self._disconnect_comms(comm_clients)
                 return False
 
         self.__log.info('All grippers detected!')
+        self.clients = comm_clients
         self.grippers = self.build_grippers(self.clients)
         return True
 
     def _autodetect(self, find_count):
+        comm_clients = []
         for dev_id in VALID_DEVICE_IDS:
             comms = Communication(dev_id)
             if self._detect_gripper_with_comms(dev_id, comms):
-                self.clients.append(comms)
+                comm_clients.append(comms)
                 self.__log.info('Autodetected {}'.format(dev_id))
                 find_count -= 1
                 if find_count == 0:
@@ -239,9 +248,12 @@ class TeachmateGripperDriver(GripperDriver):
 
         if find_count == 0:
             self.__log.info('Autodetect successful')
+            self.clients = comm_clients
             self.grippers = self.build_grippers(self.clients)
             return True
-        return False
+        else:
+            self._disconnect_comms(comm_clients)
+            return False
 
     def _start(self):
         if self.grippers:
