@@ -12,7 +12,6 @@ class AttachmentSession(object):
     """
     def __init__(self, topic, key):
         self.bond = bondpy.Bond(topic, key)
-        self.bond.on_broken = self.bond.shutdown
 
     def __enter__(self):
         self.bond.start()
