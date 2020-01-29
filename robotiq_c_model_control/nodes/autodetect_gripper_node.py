@@ -31,7 +31,8 @@ def main():
     # AttachmentSession synchronizes the launching of this attachment with
     # ready_runtime_manager. The attachment manager will not progress until the
     # detection is complete.
-    with AttachmentSession('/robotiq_single_gripper', 'robotiq_single_gripper'):
+    bond_topic = rospy.get_param('~bond_topic', 'unspecified_bond_topic')
+    with AttachmentSession('/{}'.format(bond_topic), bond_topic):
         if not driver.autodetect(modbus_ids, find_count=1):
             rospy.logerr('Failed to detect a gripper')
             return errno.ENXIO
