@@ -9,20 +9,15 @@ from robotiq_c_model_control.constants import (
     MODBUS,
     ORIGINAL
 )
-from robotiq_c_model_control.gripper_driver import (
-    SerialGripperDriver,
-    TeachmateGripperDriver
-)
+from robotiq_c_model_control.gripper_driver import TeachmateGripperDriver
 from robotiq_c_model_control.params import get_supported_modbus_ids
 
 
 def main():
     """ Launch the ROS node. """
     rospy.init_node('robotiq_auto_gripper')
-    rospy.loginfo('Launched single robotiq gripper node.')
 
-    teachmate_type = rospy.get_param('/teachmate_configuration/type', ORIGINAL)
-    driver = TeachmateGripperDriver() if teachmate_type == MODBUS else SerialGripperDriver()
+    driver = TeachmateGripperDriver()
 
     modbus_ids = get_supported_modbus_ids()
     id_str = ', '.join(str(id) for id in modbus_ids)
@@ -32,14 +27,15 @@ def main():
     # ready_runtime_manager. The attachment manager will not progress until the
     # detection is complete.
     bond_topic = rospy.get_param('~bond_topic', 'unspecified_bond_topic')
+    num_grippers = rospy.get_param('~num_grippers', 1)
     with AttachmentSession('/{}'.format(bond_topic), bond_topic):
-        if not driver.autodetect(modbus_ids, find_count=1):
+        if not driver.autodetect(modbus_ids, find_count=num_grippers):
             rospy.logerr('Failed to detect a gripper')
             return errno.ENXIO
 
         driver.start()
+        rospy.spin()
 
-    rospy.spin()
 
 if __name__ == '__main__':
     main()

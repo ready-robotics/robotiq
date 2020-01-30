@@ -53,13 +53,13 @@ from threading import Lock
 class Communication(object):
     def __init__(self, dev_id):
         self.dev_id = dev_id
+
         # All loggers automatically include the device ID
         self.update_loggers('DEV {}: '.format(dev_id))
 
         self.read_registers_ac = None
         self.write_registers_ac = None
         self.modbus_action_lock = Lock()
-        self.robotiq_id = rospy.get_param("/grippers/robotiq_id", 9)
 
     def update_loggers(self, prefix):
         """ Decorate all the loggers with a given prefix. """
