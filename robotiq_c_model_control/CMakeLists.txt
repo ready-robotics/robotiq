@@ -53,4 +53,5 @@ catkin_package(
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/groovy/api/catkin/html/adv_user_guide/variables.html
 
-install(PROGRAMS nodes/robotiq_gripper_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS nodes/autodetect_gripper_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS nodes/dual_gripper_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
