@@ -132,7 +132,7 @@ class RobotiqGripperROSInterface:
         self.goal_thread = None
         self.last_goal_wait = False
         self.reset_thread = None
-        self.gripper_as_ = BaseActionServer('{}/grip_action'.format(self.name), GripperAction, self.goal_cb, auto_start=False)
+        self.gripper_as_ = BaseActionServer('/robotiq_gripper_action', GripperAction, self.goal_cb, auto_start=False)
 
         self.reg_status = self.cmodel.get_status()
         self.reg_status_lock = Lock()
@@ -140,10 +140,10 @@ class RobotiqGripperROSInterface:
 
         self.grip_state = GetRobotiqGripStateResponse.UNKNOWN
         self.grip_state_lock_ = Lock()
-        self.grip_state_srv_ = rospy.Service('{}/get_grip_state'.format(self.name), GetRobotiqGripState, self.handle_grip_state_service)
+        self.grip_state_srv_ = rospy.Service('/robotiq/get_grip_state', GetRobotiqGripState, self.handle_grip_state_service)
 
-        self.command_pub = rospy.Publisher('{}/input_command'.format(self.name), CModel_robot_output, queue_size=1)
-        self.reg_status_pub = rospy.Publisher('{}/state'.format(self.name), CModel_robot_input, queue_size=1)
+        self.command_pub = rospy.Publisher('/robotiq_input_command', CModel_robot_output, queue_size=1)
+        self.reg_status_pub = rospy.Publisher('/robotiq_state', CModel_robot_input, queue_size=1)
 
     def start(self):
         self.gripper_as_.start()

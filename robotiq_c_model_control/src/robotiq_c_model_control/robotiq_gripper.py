@@ -20,7 +20,7 @@ class RobotiqGripper(object):
         self.terminate = Event()
         self.refresh_thread = Thread(target=self.refresh_loop, name='{} refresh loop'.format(name))
 
-        self.watchdog_pub = rospy.Publisher('{}/watchdog'.format(name), Empty, queue_size=1)
+        self.watchdog_pub = rospy.Publisher('/robotiq_85mm_gripper/watchdog', Empty, queue_size=1)
 
     @property
     def resetting(self):
