@@ -157,6 +157,7 @@ class Communication(object):
                 return None
 
             resp = self.read_registers_ac.get_result()
+
         if resp.result != resp.SUCCESS:
             self.__log.warn('Error Reading Registers')
             return None

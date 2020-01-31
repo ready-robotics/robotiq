@@ -41,8 +41,9 @@ class RobotiqGripper(object):
                 return
 
             try:
-                self.grip_interface.refresh_status()
-                self.watchdog_pub.publish(Empty())
+                if self.grip_interface.refresh_status():
+                    self.watchdog_pub.publish(Empty())
+
                 acquisition_rate.sleep()
             except Exception as exc:
                 msg = '{} failed: {}'.format(self.refresh_thread.name, exc)

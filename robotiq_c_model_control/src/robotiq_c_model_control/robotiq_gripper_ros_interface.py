@@ -181,6 +181,7 @@ class RobotiqGripperROSInterface:
             if status.gFLT != 0 and not self.resetting:
                 self.__log.info('RESETTING Robotiq {}'.format(self.name))
                 self.reset_gripper()
+        return status
 
     def wait_for_next_status(self, seconds=0.25):
         with self.reg_status_cv:
