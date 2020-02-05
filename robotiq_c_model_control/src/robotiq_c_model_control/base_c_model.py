@@ -32,8 +32,6 @@
 #
 # Copyright (c) 2012, Robotiq, Inc.
 # Revision $Id$
-
-
 from robotiq_c_model_control.msg import CModel_robot_input
 
 
@@ -43,8 +41,8 @@ class BaseCModel(object):
         Robotic C-Model gripper
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, comms):
+        self.comms = comms
 
     @staticmethod
     def verify_command(command):
@@ -102,10 +100,14 @@ class BaseCModel(object):
         return self.comms.send_command(cmd)
 
     def get_status(self):
+        return self.read_comm_status(self.comms)
+
+    @staticmethod
+    def read_comm_status(comms):
         """Request the status from the gripper and return it in the CModel_robot_input msg type."""
 
         # Acquire status from the Gripper
-        status = self.comms.get_status(6)
+        status = comms.get_status(6)
         if not status:
             return None
 
