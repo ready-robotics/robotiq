@@ -1,6 +1,6 @@
 <package>
   <name>robotiq_c_model_visualization</name>
-  <version>2.3.0</version>
+  <version>2.3.5</version>
   <description>robotiq</description>
   <maintainer email="kguerin2@jhu.edu">Kel Guerin</maintainer>
   <license>BSD</license>
